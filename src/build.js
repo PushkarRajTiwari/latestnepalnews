@@ -5,7 +5,8 @@
 //   node src/build.js --offline  use the sample feeds in test/fixtures
 //
 // Environment:
-//   SITE_URL   public address, e.g. https://latestnepalnews.com
+//   SITE_URL   public address, e.g. https://latestnepalnews.com (defaults to
+//              the Vercel production domain, then config/site.js)
 //   BASE_PATH  path the site is served under, e.g. /latestnepalnews ("" at a domain root)
 
 import { createHash } from 'node:crypto';
@@ -26,7 +27,10 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = join(root, 'dist');
 const offline = process.argv.includes('--offline');
 
-const siteUrl = (process.env.SITE_URL || site.url).replace(/\/$/, '');
+// On Vercel, VERCEL_PROJECT_PRODUCTION_URL is the production domain (the
+// custom domain once one is added).
+const vercelUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL && `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+const siteUrl = (process.env.SITE_URL || vercelUrl || site.url).replace(/\/$/, '');
 const basePath = (process.env.BASE_PATH || '').replace(/\/$/, '');
 
 async function loadPrevious() {

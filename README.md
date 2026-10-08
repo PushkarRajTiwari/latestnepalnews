@@ -39,6 +39,18 @@ If a feed fails, it's skipped and the rest still publish. To see which feeds are
 6. **Rebuild with the new address.** Run the workflow once more, so links and the sitemap use `latestnepalnews.com`.
 7. **Tell Google about the site.** Add it in [Google Search Console](https://search.google.com/search-console) and submit `https://latestnepalnews.com/sitemap.xml`.
 
+## Hosting on Vercel instead
+
+`vercel.json` already tells Vercel how to build the site and to publish the `dist` folder. Vercel rebuilds automatically on every push to `main`. To keep the news refreshing every 30 minutes:
+
+1. In Vercel, go to **Project → Settings → Git → Deploy Hooks** and create a hook named `refresh` for the `main` branch. Copy its URL.
+2. In GitHub, go to **Settings → Secrets and variables → Actions → New repository secret**. Name it `VERCEL_DEPLOY_HOOK` and paste the URL.
+3. Add `latestnepalnews.com` under **Vercel → Project → Settings → Domains** and set the DNS records Vercel shows you. (You don't need the GitHub Pages DNS records above.)
+
+The scheduled GitHub workflow then calls the hook every 30 minutes, and each Vercel build fetches the latest feeds.
+
+Note that Vercel's free Hobby plan is for non-commercial use. If you add ads later, you'll need its Pro plan, or you can switch to GitHub Pages, which is free for this.
+
 ## Common changes
 
 | To | Edit |

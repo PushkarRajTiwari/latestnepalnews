@@ -57,6 +57,22 @@ jobs:
       - id: deployment
         uses: actions/deploy-pages@v4
 
+  # On Vercel: rebuild the site by calling its deploy hook. Add the hook URL
+  # as the repository secret VERCEL_DEPLOY_HOOK; without it this does nothing.
+  vercel:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger a Vercel rebuild
+        env:
+          HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+        run: |
+          if [ -n "$HOOK" ]; then
+            curl -fsS -X POST "$HOOK"
+          else
+            echo "VERCEL_DEPLOY_HOOK is not set; skipping."
+          fi
+
   # GitHub pauses scheduled workflows in public repos after 60 days without
   # a commit. If nothing has been committed for 45 days, record a timestamp
   # so the news keeps updating.
