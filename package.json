@@ -1,0 +1,20 @@
+{
+  "name": "latestnepalnews",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Latest Nepal News: a bilingual (Nepali and English) news aggregator built from RSS feeds.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node src/build.js",
+    "build:offline": "node src/build.js --offline",
+    "preview": "node src/build.js --offline && node scripts/serve.js",
+    "serve": "node scripts/serve.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "fast-xml-parser": "^5.2.5"
+  }
+}

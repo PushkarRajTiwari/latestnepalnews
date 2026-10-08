@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>My Republica</title>
+<entry><title>Stock market extends rally as NEPSE gains 40 points</title><link rel="alternate" href="https://example.com/rep/1"/><id>https://example.com/rep/1</id><updated>{{ago:70}}</updated><category term="Economy"/><summary>Investors cheered lower interest rates as the benchmark index rose sharply.</summary></entry>
+<entry><title>Climate summit: Nepal to raise mountain agenda at UN conference</title><link rel="alternate" href="https://example.com/rep/2"/><id>https://example.com/rep/2</id><updated>{{ago:300}}</updated><category term="World"/><summary>Nepal will highlight the impact of climate change on the Himalaya.</summary></entry>
+</feed>

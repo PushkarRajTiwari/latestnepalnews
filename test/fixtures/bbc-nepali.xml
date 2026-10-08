@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:media="http://search.yahoo.com/mrss/">
+<channel><title>BBC Nepali</title><link>https://example.com</link>
+<item><title><![CDATA[डेंगु: काठमाडौँका अस्पतालमा बिरामीको चाप बढ्यो]]></title><link>https://example.com/bbc/1</link><guid>https://example.com/bbc/1</guid><pubDate>{{ago:110}}</pubDate><category><![CDATA[स्वास्थ्य]]></category><description><![CDATA[<p>चिकित्सकहरूले लामखुट्टेबाट बच्न सावधानी अपनाउन सल्लाह दिएका छन्।</p>]]></description></item>
+<item><title><![CDATA[नेप्सेमा उछाल, एकै दिन ४० अंकले बढ्यो परिसूचक]]></title><link>https://example.com/bbc/2</link><guid>https://example.com/bbc/2</guid><pubDate>{{ago:75}}</pubDate><category><![CDATA[अर्थ]]></category><description><![CDATA[<p>बजार विश्लेषकहरूले ब्याजदर घट्दा सेयर बजार सुधारिएको बताएका छन्।</p>]]></description></item>
+<item><title><![CDATA[संयुक्त राष्ट्रसंघको जलवायु सम्मेलनमा नेपालको सहभागिता]]></title><link>https://example.com/bbc/3</link><guid>https://example.com/bbc/3</guid><pubDate>{{ago:290}}</pubDate><category><![CDATA[विश्व]]></category><description><![CDATA[<p>हिमाली देशहरूमा जलवायु परिवर्तनको असरबारे नेपालले आवाज उठाउने भएको छ।</p>]]></description><media:content url="http://localhost:4173/_fixtures/2.svg" medium="image"/></item>
+</channel></rss>
