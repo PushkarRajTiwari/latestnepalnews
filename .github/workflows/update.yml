@@ -22,6 +22,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    outputs:
+      pages-ready: ${{ steps.pages.outcome == 'success' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -30,8 +32,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
-      # Fails until Pages is turned on in Settings → Pages; the build still
-      # runs so the feed check in the log is useful, and only deploy fails.
+      # Fails until Pages is turned on in Settings → Pages. The build still
+      # runs (its log shows which feeds work) and deploy is skipped.
       - id: pages
         uses: actions/configure-pages@v5
         continue-on-error: true
@@ -46,6 +48,7 @@ jobs:
 
   deploy:
     needs: build
+    if: needs.build.outputs.pages-ready == 'true'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
