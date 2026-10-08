@@ -1,0 +1,31 @@
+name: Check domain
+
+# Run by hand (Actions → Check domain → Run workflow) to see what the
+# world sees for latestnepalnews.com: DNS records and HTTPS responses.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: DNS
+        run: |
+          for host in latestnepalnews.com www.latestnepalnews.com; do
+            for type in A AAAA CNAME; do
+              echo "== $host $type"
+              dig +short "$host" "$type" @8.8.8.8 || true
+            done
+          done
+          echo "== NS"
+          dig +short NS latestnepalnews.com @8.8.8.8 || true
+      - name: HTTPS
+        run: |
+          for url in https://latestnepalnews.com/ https://www.latestnepalnews.com/ http://latestnepalnews.com/; do
+            echo "== $url"
+            curl -sS -o /dev/null -m 20 -w 'status %{http_code}  ip %{remote_ip}  redirect %{redirect_url}\n' "$url" || true
+            curl -sSI -m 20 "$url" 2>&1 | grep -iE '^(server|location|x-vercel)' || true
+          done
