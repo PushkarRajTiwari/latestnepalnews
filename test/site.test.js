@@ -2,11 +2,13 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 
+import { mergeArchive, pruneSummaries } from '../src/archive.js';
 import { categorize } from '../src/categorize.js';
 import { stem, topStories } from '../src/cluster.js';
 import { discoverFeedUrl, parseFeed } from '../src/parse.js';
-import { context, renderList } from '../src/render.js';
+import { context, renderList, renderStory } from '../src/render.js';
 import { mergeItems, normalizeItems } from '../src/store.js';
+import { planSummaries, writeSummaries } from '../src/summarize.js';
 import { normalizeUrl, toPlainText, truncate } from '../src/util.js';
 
 const now = new Date('2026-10-08T06:00:00Z');
@@ -116,4 +118,116 @@ test('escapes feed text in HTML', () => {
   assert.ok(!html.includes('<img onerror'));
   assert.ok(!html.includes('javascript:1'));
   assert.ok(html.includes('&lt;script&gt;'));
+});
+
+const story = (id, source, title, minutesAgo = 30, extra = {}) => ({
+  id, title, link: `https://${source}.example/${id}`, source, lang: 'en', excerpt: `${title} excerpt`, image: null,
+  category: 'politics', published: new Date(now.getTime() - minutesAgo * 60_000).toISOString(), firstSeen: now.toISOString(), ...extra,
+});
+const budgetStories = () => [
+  story('a', 'kp', 'Finance minister presents federal budget in parliament today'),
+  story('b', 'ht', 'Federal budget presented in parliament by finance minister', 40),
+  story('c', 'rep', 'Unrelated story about weather in Pokhara', 50),
+];
+const enCtx = () => context({ lang: 'en', basePath: '', siteUrl: 'https://example.com', sources: new Map([['kp', { name: 'Kathmandu Post' }]]), generatedAt: now.toISOString() });
+
+test('the archive keeps summaries and first-seen times, and drops stories past its window', () => {
+  const kept = story('a', 'kp', 'Kept', 60, { summaryId: 's1', firstSeen: '2026-10-08T04:00:00Z' });
+  const old = story('z', 'kp', 'Old', 60 * 24 * 40);
+  const merged = mergeArchive([kept, old], [story('a', 'kp', 'Kept, new title', 10)], { now, days: 30 });
+  assert.deepEqual(merged.map((s) => s.id), ['a']);
+  assert.equal(merged[0].summaryId, 's1');
+  assert.equal(merged[0].title, 'Kept, new title');
+  assert.equal(merged[0].firstSeen, '2026-10-08T04:00:00Z');
+  const summaries = pruneSummaries({ s1: { itemIds: ['a', 'z'] }, s2: { itemIds: ['z'] } }, merged);
+  assert.deepEqual(summaries, { s1: { itemIds: ['a'] } });
+});
+
+test('plans one summary per story that several outlets cover, and reuses it', () => {
+  const stories = budgetStories();
+  const summaries = {};
+  const jobs = planSummaries(stories, summaries, { lang: 'en', now });
+  assert.equal(jobs.length, 1);
+  assert.deepEqual(jobs[0].members.map((m) => m.id).sort(), ['a', 'b']);
+
+  // Once written, a new outlet joining attaches to it without a rewrite.
+  summaries[jobs[0].id] = { lang: 'en', text: 'x', count: 2, itemIds: ['a', 'b'] };
+  stories[0].summaryId = stories[1].summaryId = jobs[0].id;
+  stories.push(story('d', 'oke', 'Finance minister presents budget in federal parliament', 20));
+  assert.equal(planSummaries(stories, summaries, { lang: 'en', now }).length, 0);
+  assert.equal(stories[3].summaryId, jobs[0].id);
+  // A second new outlet triggers a rewrite.
+  stories.push(story('e', 'set', 'Budget presented in federal parliament by finance minister', 15));
+  assert.equal(planSummaries(stories, summaries, { lang: 'en', now }).length, 1);
+});
+
+const fakeClient = (reply) => {
+  const calls = [];
+  return {
+    calls,
+    beta: { messages: { create: async (params) => (calls.push(params), reply(params)) } },
+  };
+};
+
+test('writes summaries with Claude and records skips and failures', async () => {
+  const stories = budgetStories();
+  const summaries = {};
+  const jobs = planSummaries(stories, summaries, { lang: 'en', now });
+  const client = fakeClient(() => ({ stop_reason: 'end_turn', content: [{ type: 'text', text: 'The budget was presented.\n\nOpposition protested.' }] }));
+  const written = await writeSummaries(jobs, summaries, { client, model: 'claude-opus-5-5', max: 5, sourceName: (id) => id, now });
+  assert.equal(written, 1);
+  const summary = summaries[jobs[0].id];
+  assert.equal(summary.text, 'The budget was presented.\n\nOpposition protested.');
+  assert.equal(summary.count, 2);
+  assert.equal(stories[0].summaryId, jobs[0].id);
+  const params = client.calls[0];
+  assert.equal(params.model, 'claude-opus-5-5');
+  assert.equal(params.fallbacks, 'default');
+  assert.match(params.messages[0].content, /<headline>Finance minister presents/);
+  assert.match(params.system, /English/);
+
+  // SKIP and refusals are stored so they aren't retried every build.
+  const skipped = {};
+  const skipJobs = planSummaries(budgetStories(), skipped, { lang: 'en', now });
+  await writeSummaries(skipJobs, skipped, { client: fakeClient(() => ({ stop_reason: 'refusal', content: [] })), model: 'claude-haiku-5-5', max: 5, sourceName: (id) => id, now });
+  assert.equal(skipped[skipJobs[0].id].skip, true);
+
+  // Errors are logged and skipped; nothing is stored.
+  const failed = {};
+  const failJobs = planSummaries(budgetStories(), failed, { lang: 'en', now });
+  const boom = fakeClient(() => {
+    throw Object.assign(new Error('invalid x-api-key'), { status: 401 });
+  });
+  assert.equal(await writeSummaries(failJobs, failed, { client: boom, model: 'claude-haiku-5-5', max: 5, sourceName: (id) => id, now }), 0);
+  assert.deepEqual(failed, {});
+  assert.equal(boom.calls[0].fallbacks, undefined);
+});
+
+test('story pages keep readers on the site and link out once', () => {
+  const ctx = enCtx();
+  const [a, b] = budgetStories();
+  a.image = 'https://kp.example/photo.jpg';
+  const summary = { text: 'First paragraph.\n\nSecond <b>paragraph</b>.', count: 2, itemIds: ['a', 'b'] };
+  const html = renderStory(ctx, { item: a, summary, others: [b], more: [b] });
+  assert.ok(html.includes('<link rel="canonical" href="https://example.com/en/news/a/">'));
+  assert.ok(html.includes('<meta property="og:type" content="article">'));
+  assert.ok(html.includes('<meta property="og:image" content="https://kp.example/photo.jpg">'));
+  assert.ok(html.includes(`<meta property="og:title" content="${a.title}">`));
+  assert.ok(html.includes('Read the full story at Kathmandu Post'));
+  assert.ok(html.includes('href="https://kp.example/a"'));
+  assert.ok(html.includes('https://wa.me/?text='));
+  assert.ok(html.includes('&lt;b&gt;paragraph'));
+  assert.ok(html.includes('href="/en/news/b/"'));
+  assert.ok(!html.includes('noindex'));
+  assert.ok(!html.includes('rel="alternate" hreflang'));
+
+  const plain = renderStory(ctx, { item: b });
+  assert.ok(plain.includes('noindex'));
+  assert.ok(plain.includes('Excerpt from'));
+});
+
+test('headline cards link to the story page on the site', () => {
+  const html = renderList(enCtx(), { slug: 'latest', title: 'Latest', items: budgetStories() });
+  assert.ok(html.includes('href="/en/news/a/"'));
+  assert.ok(!html.includes('href="https://kp.example/a"'));
 });

@@ -15,6 +15,7 @@
     "test": "node --test test/*.test.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.132.1",
     "fast-xml-parser": "^5.2.5"
   }
 }

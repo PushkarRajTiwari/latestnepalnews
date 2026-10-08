@@ -1,4 +1,4 @@
-// Relative times ("5 min ago") and hiding images that fail to load.
+// Relative times ("5 min ago"), share buttons, and hiding images that fail to load.
 (function () {
   var np = document.documentElement.lang === 'ne';
   var digits = '०१२३४५६७८९';
@@ -28,6 +28,26 @@
   }
   update();
   setInterval(update, 60000);
+
+  // Share buttons on story pages: the phone's own share menu where there is
+  // one, and copy-link everywhere.
+  var native = document.querySelector('[data-share-url]');
+  if (native && navigator.share) {
+    native.hidden = false;
+    native.addEventListener('click', function () {
+      navigator.share({ title: native.getAttribute('data-share-title'), url: native.getAttribute('data-share-url') }).catch(function () {});
+    });
+  }
+  var copy = document.querySelector('[data-copy]');
+  if (copy && navigator.clipboard) {
+    copy.addEventListener('click', function () {
+      navigator.clipboard.writeText(copy.getAttribute('data-copy')).then(function () {
+        copy.textContent = copy.getAttribute('data-copied');
+      });
+    });
+  } else if (copy) {
+    copy.hidden = true;
+  }
 
   // Publishers sometimes block hotlinked images; drop the empty frame.
   document.addEventListener('error', function (event) {

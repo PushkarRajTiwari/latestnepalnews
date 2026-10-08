@@ -22,6 +22,11 @@ function formatTime(iso, lang) {
   }).format(new Date(iso));
 }
 
+// A story's own page on the site.
+export function storyPath(item) {
+  return pathFor(item.lang, `news/${item.id}`);
+}
+
 function formatDate(iso, lang) {
   return new Intl.DateTimeFormat(strings[lang].locale, { timeZone: 'Asia/Kathmandu', dateStyle: 'full' }).format(new Date(iso));
 }
@@ -53,8 +58,8 @@ function image(item, cls) {
   return `<div class="${cls}"><img src="${e(src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"></div>`;
 }
 
-function storyLink(item, inner) {
-  return `<a href="${e(safeUrl(item.link) || '#')}" target="_blank" rel="noopener">${inner}</a>`;
+function storyLink(item, inner, ctx) {
+  return `<a href="${e(ctx.href(storyPath(item)))}">${inner}</a>`;
 }
 
 function related(list, ctx) {
@@ -64,7 +69,7 @@ function related(list, ctx) {
   return `<div class="related">
   <p class="related-label">${e(ctx.t.alsoCovered)}</p>
   <ul>${shown
-    .map((item) => `<li>${storyLink(item, e(item.title))} <span class="source">${e(ctx.sourceName(item.source))}</span></li>`)
+    .map((item) => `<li>${storyLink(item, e(item.title), ctx)} <span class="source">${e(ctx.sourceName(item.source))}</span></li>`)
     .join('')}${rest > 0 ? `<li class="related-more">+${rest}</li>` : ''}</ul>
 </div>`;
 }
@@ -74,7 +79,7 @@ function story(item, ctx, { size = 'card', relatedItems = [], showExcerpt = true
   const sourceCount = relatedItems.length ? `<span class="badge">${e(ctx.t.sourcesCount(relatedItems.length + 1))}</span>` : '';
   const thumb = size === 'row' ? image(item, 'thumb thumb-sm') : image(item, 'thumb');
   return `<article class="story story-${size}${item.image ? ' has-image' : ''}">
-  ${storyLink(item, `${thumb}<h3>${e(item.title)}</h3>`)}
+  ${storyLink(item, `${thumb}<h3>${e(item.title)}</h3>`, ctx)}
   ${showExcerpt && item.excerpt ? `<p class="excerpt">${e(item.excerpt)}</p>` : ''}
   <div class="meta-row">${meta(item, ctx)}${sourceCount}</div>
   ${related(relatedItems, ctx)}
@@ -82,7 +87,7 @@ function story(item, ctx, { size = 'card', relatedItems = [], showExcerpt = true
 }
 
 function compact(item, ctx) {
-  return `<li class="compact">${storyLink(item, e(item.title))}${meta(item, ctx)}</li>`;
+  return `<li class="compact">${storyLink(item, e(item.title), ctx)}${meta(item, ctx)}</li>`;
 }
 
 function nav(ctx, active) {
@@ -91,6 +96,7 @@ function nav(ctx, active) {
   return [
     link('', ctx.t.home),
     link('latest', ctx.t.latest),
+    ...(ctx.hasBrief ? [link('brief', ctx.t.brief)] : []),
     ...allCategories.map((c) => link(c.slug, c.label[ctx.lang])),
   ].join('');
 }
@@ -100,13 +106,19 @@ function logo() {
 }
 
 // Full page shell. `slug` is the page's path slug, shared by both languages,
-// so the language switch and hreflang tags can point at the twin page.
-export function layout(ctx, { slug = '', title, description, body, active = slug, noindex = false }) {
+// so the language switch and hreflang tags can point at the twin page. Pages
+// with no twin (a story's own page) set `twin: false`; their language switch
+// goes to the other language's homepage.
+export function layout(ctx, { slug = '', title, description, body, active = slug, noindex = false, twin = true, image, type = 'website' }) {
   const { t, lang } = ctx;
   const other = lang === 'np' ? 'en' : 'np';
   const pageTitle = title ? `${title} | ${t.siteName}` : `${t.siteName}: ${t.tagline}`;
   const desc = description || t.description;
   const canonical = ctx.absolute(pathFor(lang, slug));
+  const hreflang = twin
+    ? `${LANGS.map((l) => `<link rel="alternate" hreflang="${strings[l].htmlLang}" href="${e(ctx.absolute(pathFor(l, slug)))}">`).join('\n')}
+<link rel="alternate" hreflang="x-default" href="${e(ctx.absolute(pathFor('np', slug)))}">`
+    : '';
   const jsonLd = slug
     ? ''
     : `<script type="application/ld+json">${JSON.stringify({
@@ -125,14 +137,13 @@ export function layout(ctx, { slug = '', title, description, body, active = slug
 <meta name="description" content="${e(desc)}">
 ${noindex ? '<meta name="robots" content="noindex">' : ''}
 <link rel="canonical" href="${e(canonical)}">
-${LANGS.map((l) => `<link rel="alternate" hreflang="${strings[l].htmlLang}" href="${e(ctx.absolute(pathFor(l, slug)))}">`).join('\n')}
-<link rel="alternate" hreflang="x-default" href="${e(ctx.absolute(pathFor('np', slug)))}">
-<meta property="og:type" content="website">
+${hreflang}
+<meta property="og:type" content="${type}">
 <meta property="og:site_name" content="${e(t.siteName)}">
-<meta property="og:title" content="${e(pageTitle)}">
+<meta property="og:title" content="${e(type === 'article' ? title : pageTitle)}">
 <meta property="og:description" content="${e(desc)}">
 <meta property="og:url" content="${e(canonical)}">
-<meta property="og:image" content="${e(ctx.absolute('og-image.png'))}">
+<meta property="og:image" content="${e(safeUrl(image) || ctx.absolute('og-image.png'))}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#dc143c">
 <link rel="icon" href="${ctx.href('favicon.svg')}" type="image/svg+xml">
@@ -147,7 +158,7 @@ ${jsonLd}
 <header class="masthead">
   <div class="topbar wrap">
     <span class="today">${e(formatDate(ctx.generatedAt, lang))}</span>
-    <a class="lang-switch" href="${ctx.href(pathFor(other, slug))}" hreflang="${strings[other].htmlLang}" lang="${strings[other].htmlLang}">${e(t.switchTo)}</a>
+    <a class="lang-switch" href="${ctx.href(pathFor(other, twin ? slug : ''))}" hreflang="${strings[other].htmlLang}" lang="${strings[other].htmlLang}">${e(t.switchTo)}</a>
   </div>
   <div class="brand wrap">
     <a class="logo" href="${ctx.href(pathFor(lang))}">${logo()}<span class="logo-text">${e(t.siteName)}</span></a>
@@ -262,4 +273,108 @@ export function renderNotFound(ctx) {
   const body = `<div class="page-head"><h1>${e(ctx.t.notFound)}</h1></div>
 <div class="prose"><p>${e(ctx.t.notFoundBody)}</p><p><a href="${ctx.href(pathFor(ctx.lang))}">${e(ctx.t.backHome)}</a></p></div>`;
   return layout(ctx, { slug: '', title: ctx.t.notFound, body, noindex: true });
+}
+
+function shareLinks(ctx, url, title) {
+  const u = encodeURIComponent(url);
+  const text = encodeURIComponent(`${title} ${url}`);
+  const links = [
+    ['Facebook', `https://www.facebook.com/sharer/sharer.php?u=${u}`],
+    ['WhatsApp', `https://wa.me/?text=${text}`],
+    ['Viber', `viber://forward?text=${text}`],
+    ['X', `https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${u}`],
+  ];
+  return `<div class="share" aria-label="${e(ctx.t.share)}">
+  <span class="share-label">${e(ctx.t.share)}</span>
+  <button type="button" class="share-btn share-native" data-share-url="${e(url)}" data-share-title="${e(title)}" hidden>${e(ctx.t.share)}</button>
+  ${links.map(([name, href]) => `<a class="share-btn" href="${e(href)}" target="_blank" rel="noopener">${name}</a>`).join('\n  ')}
+  <button type="button" class="share-btn" data-copy="${e(url)}" data-copied="${e(ctx.t.copied)}">${e(ctx.t.copyLink)}</button>
+</div>`;
+}
+
+const paragraphs = (text) =>
+  text
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => `<p>${e(p)}</p>`)
+    .join('');
+
+// A story's own page: the summary or excerpt, a button to the full story at
+// the source, share buttons and more stories to read.
+export function renderStory(ctx, { item, summary, others = [], more = [] }) {
+  const sourceName = ctx.sourceName(item.source);
+  const url = ctx.absolute(storyPath(item));
+  const category = allCategories.find((c) => c.slug === item.category);
+  const img = safeUrl(item.image);
+  const summaryHtml = summary
+    ? `<section class="summary" aria-labelledby="summary-title">
+  <h2 id="summary-title">${e(ctx.t.summary)}</h2>
+  ${paragraphs(summary.text)}
+  <p class="summary-note">${e(ctx.t.summaryNote(summary.count))}</p>
+</section>`
+    : item.excerpt
+      ? `<blockquote class="story-excerpt"><p>${e(item.excerpt)}</p><footer>${e(ctx.t.excerptFrom(sourceName))}</footer></blockquote>`
+      : '';
+  const othersHtml = others.length
+    ? `<section class="others"><h2>${e(ctx.t.alsoReporting)}</h2><ul>${others
+        .map(
+          (o) => `<li><a href="${e(safeUrl(o.link) || '#')}" target="_blank" rel="noopener">${e(o.title)}</a> <span class="source">${e(ctx.sourceName(o.source))}</span></li>`
+        )
+        .join('')}</ul></section>`
+    : '';
+  const body = `<article class="story-page">
+  ${category ? `<p class="kicker"><a href="${ctx.href(pathFor(ctx.lang, category.slug))}">${e(category.label[ctx.lang])}</a></p>` : ''}
+  <h1>${e(item.title)}</h1>
+  ${meta(item, ctx)}
+  ${img ? `<div class="thumb story-image"><img src="${e(img)}" alt="" decoding="async" referrerpolicy="no-referrer"></div>` : ''}
+  ${summaryHtml}
+  <p class="read-full"><a class="button" href="${e(safeUrl(item.link) || '#')}" target="_blank" rel="noopener">${e(ctx.t.readFull(sourceName))} →</a></p>
+  ${shareLinks(ctx, url, item.title)}
+  ${othersHtml}
+</article>
+${more.length ? `<section class="more-news">${sectionHead(ctx, ctx.t.moreNews, category?.slug || 'latest')}<div class="list">${more.map((m) => story(m, ctx, { size: 'row', showExcerpt: false })).join('')}</div></section>` : ''}`;
+  const description = summary ? summary.text.replace(/\s+/g, ' ').slice(0, 200) : item.excerpt || item.title;
+  return layout(ctx, {
+    slug: `news/${item.id}`,
+    active: category?.slug,
+    title: item.title,
+    description,
+    body,
+    twin: false,
+    image: item.image,
+    type: 'article',
+    // Pages with only a headline and an excerpt add little for search
+    // engines; only summarized stories are indexed.
+    noindex: !summary,
+  });
+}
+
+// One day's brief: the day's biggest summarized stories. `entries` are
+// { item, summary } pairs; `dates` are the days that have a brief.
+export function renderBrief(ctx, { date, entries, dates, slug }) {
+  const day = formatDate(`${date}T12:00:00+05:45`, ctx.lang);
+  const list = entries.length
+    ? entries
+        .map(
+          ({ item, summary }) => `<article class="brief-item">
+  <h2><a href="${e(ctx.href(storyPath(item)))}">${e(item.title)}</a></h2>
+  ${paragraphs(summary.text)}
+  <div class="meta-row"><span class="badge">${e(ctx.t.sourcesCount(summary.count))}</span></div>
+</article>`
+        )
+        .join('\n')
+    : `<p class="empty">${e(ctx.t.briefEmpty)}</p>`;
+  const earlier = dates.filter((d) => d !== date);
+  const body = `<div class="page-head"><h1>${e(ctx.t.brief)}</h1><p class="count">${e(day)}</p></div>
+<div class="brief">
+  <p class="brief-intro">${e(ctx.t.briefIntro)}</p>
+  ${list}
+  ${entries.length ? `<p class="summary-note">${e(ctx.t.briefNote)}</p>` : ''}
+  ${earlier.length ? `<nav class="earlier"><h2>${e(ctx.t.earlierBriefs)}</h2><ul>${earlier
+    .map((d) => `<li><a href="${ctx.href(pathFor(ctx.lang, `brief/${d}`))}">${e(formatDate(`${d}T12:00:00+05:45`, ctx.lang))}</a></li>`)
+    .join('')}</ul></nav>` : ''}
+</div>`;
+  // Only /brief/ is sure to exist in both languages.
+  return layout(ctx, { slug, active: 'brief', title: `${ctx.t.brief}: ${day}`, body, noindex: !entries.length, twin: slug === 'brief' });
 }
