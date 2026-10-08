@@ -49,12 +49,17 @@
     copy.hidden = true;
   }
 
-  // Publishers sometimes block hotlinked images; drop the empty frame.
+  // Publishers sometimes block hotlinked images; drop the empty frame. Some
+  // images fail before this script runs, so check those that already finished.
+  function dropFrame(img) {
+    var frame = img.closest('.thumb');
+    if (frame) frame.remove();
+  }
   document.addEventListener('error', function (event) {
-    var img = event.target;
-    if (img && img.tagName === 'IMG') {
-      var frame = img.closest('.thumb');
-      if (frame) frame.remove();
-    }
+    if (event.target && event.target.tagName === 'IMG') dropFrame(event.target);
   }, true);
+  var images = document.querySelectorAll('.thumb img');
+  for (var j = 0; j < images.length; j++) {
+    if (images[j].complete && images[j].naturalWidth === 0) dropFrame(images[j]);
+  }
 })();

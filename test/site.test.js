@@ -221,7 +221,9 @@ test('story pages keep readers on the site and link out once', () => {
   assert.ok(!html.includes('noindex'));
   assert.ok(!html.includes('rel="alternate" hreflang'));
 
+  b.image = 'http://kp.example/old.jpg';
   const plain = renderStory(ctx, { item: b });
+  assert.ok(plain.includes('src="https://kp.example/old.jpg"'));
   assert.ok(plain.includes('noindex'));
   assert.ok(plain.includes('Excerpt from'));
 });

@@ -1,7 +1,7 @@
 import { allCategories } from '../config/categories.js';
 import { site } from '../config/site.js';
 import { pages, strings } from './i18n.js';
-import { escapeHtml as e, safeUrl } from './util.js';
+import { escapeHtml as e, imageUrl, safeUrl } from './util.js';
 
 const LANGS = ['np', 'en'];
 
@@ -53,7 +53,7 @@ function meta(item, ctx) {
 }
 
 function image(item, cls) {
-  const src = safeUrl(item.image);
+  const src = imageUrl(item.image);
   if (!src) return '';
   return `<div class="${cls}"><img src="${e(src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"></div>`;
 }
@@ -143,7 +143,7 @@ ${hreflang}
 <meta property="og:title" content="${e(type === 'article' ? title : pageTitle)}">
 <meta property="og:description" content="${e(desc)}">
 <meta property="og:url" content="${e(canonical)}">
-<meta property="og:image" content="${e(safeUrl(image) || ctx.absolute('og-image.png'))}">
+<meta property="og:image" content="${e(imageUrl(image) || ctx.absolute('og-image.png'))}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#dc143c">
 <link rel="icon" href="${ctx.href('favicon.svg')}" type="image/svg+xml">
@@ -306,7 +306,7 @@ export function renderStory(ctx, { item, summary, others = [], more = [] }) {
   const sourceName = ctx.sourceName(item.source);
   const url = ctx.absolute(storyPath(item));
   const category = allCategories.find((c) => c.slug === item.category);
-  const img = safeUrl(item.image);
+  const img = imageUrl(item.image);
   const summaryHtml = summary
     ? `<section class="summary" aria-labelledby="summary-title">
   <h2 id="summary-title">${e(ctx.t.summary)}</h2>

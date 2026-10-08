@@ -57,6 +57,13 @@ export function safeUrl(value, base) {
   }
 }
 
+// Image URLs always load over https: an http image on an https page is
+// blocked as mixed content by some browsers, such as Facebook's in-app one.
+export function imageUrl(value) {
+  const href = safeUrl(value);
+  return href && href.replace(/^http:/, 'https:');
+}
+
 const TRACKING_PARAMS = /^(utm_|fbclid$|gclid$|ref$|amp$)/i;
 
 // A stable form of an article URL, used to spot the same article twice.
