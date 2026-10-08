@@ -111,6 +111,8 @@ async function main() {
 
     const byCategory = new Map(allCategories.map((c) => [c.slug, mine.filter((item) => item.category === c.slug)]));
     const top = topStories(items, { lang, now, limit: site.topStories });
+    console.log(`\n[${lang}] ${mine.length} stories: ${[...byCategory].map(([slug, list]) => `${slug} ${list.length}`).join(', ')}`);
+    for (const cluster of top) console.log(`  top: ${cluster.related.length + 1} sources · ${cluster.lead.title}`);
     const shown = new Set(top.flatMap((c) => [c.lead, ...c.related]).map((item) => item.id));
     const homeSections = new Map(
       [...byCategory].map(([slug, list]) => [slug, list.filter((item) => !shown.has(item.id)).slice(0, site.perSection)])
