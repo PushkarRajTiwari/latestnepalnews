@@ -31,4 +31,18 @@ export const site = {
 
   // Stories shown on each day's brief page.
   briefStories: 10,
+
+  // Automatic posts to the Facebook page. Only on when the FACEBOOK_PAGE_ID
+  // and FACEBOOK_PAGE_TOKEN environment variables are set (see README).
+  facebook: {
+    // Which language's top stories to post: 'np' or 'en'.
+    lang: 'np',
+    // At most this many posts per build.
+    maxPerBuild: 3,
+    // Only stories at least this many outlets report.
+    minSources: 2,
+    // Only stories published in the last this-many hours.
+    hours: 6,
+    graphVersion: 'v23.0',
+  },
 };

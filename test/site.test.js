@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import { mergeArchive, pruneSummaries } from '../src/archive.js';
 import { categorize } from '../src/categorize.js';
 import { stem, topStories } from '../src/cluster.js';
+import { choosePosts, postMessage, postToFacebook, prunePosted } from '../src/facebook.js';
 import { fillImages, pageImage } from '../src/images.js';
 import { discoverFeedUrl, parseFeed } from '../src/parse.js';
 import { context, renderList, renderStory } from '../src/render.js';
@@ -292,4 +293,53 @@ test('fills missing images from earlier builds, then from article pages, reading
 test('cards without a picture show the outlet placeholder', () => {
   const html = renderList(enCtx(), { slug: 'latest', title: 'Latest', items: [story('a', 'kp', 'No picture')] });
   assert.match(html, /class="thumb thumb-sm thumb-ph"[^>]*><span>Kathmandu Post<\/span>|class="thumb thumb-ph"[^>]*><span>Kathmandu Post<\/span>/);
+});
+
+test('Facebook: picks live, recent, multi-outlet top stories not posted before', () => {
+  const lead = (id, minutesAgo) => story(id, 'kp', `Story ${id}`, minutesAgo);
+  const clusters = [
+    { lead: lead('a', 30), related: [lead('a2', 30)] },
+    { lead: lead('b', 30), related: [] },
+    { lead: lead('c', 30), related: [lead('c2', 30)] },
+    { lead: lead('d', 60 * 10), related: [lead('d2', 30)] },
+    { lead: lead('e', 30), related: [lead('e2', 30)] },
+    { lead: lead('f', 30), related: [lead('f2', 30)] },
+  ];
+  const picked = choosePosts(clusters, {
+    live: new Set(['a', 'b', 'd', 'e', 'f']),
+    posted: { e: { postId: '1' } },
+    now,
+    minSources: 2,
+    hours: 6,
+    max: 3,
+  });
+  assert.deepEqual(picked.map((s) => s.id), ['a', 'f']);
+});
+
+test('Facebook: posts credited headlines with a link, and skips ones already on the page', async () => {
+  const calls = [];
+  const fetchImpl = async (url, init) => {
+    calls.push({ url: String(url), method: init.method, body: init.body && Object.fromEntries(init.body) });
+    if (init.method === 'GET') return new Response(JSON.stringify({ data: [{ attachments: { data: [{ url: 'https://l.facebook.com/l.php?u=https%3A%2F%2Fsite.example%2Fnews%2Fb%2F' }] } }] }));
+    return new Response(JSON.stringify({ id: 'page_post1' }));
+  };
+  const posted = {};
+  const a = { ...story('a', 'kp', 'मन्त्रीले भने'), lang: 'np' };
+  const result = await postToFacebook([a, story('b', 'kp', 'B')], {
+    pageId: '123',
+    token: 'tok',
+    version: 'v23.0',
+    posted,
+    urlFor: (s) => `https://site.example/news/${s.id}/`,
+    message: (s) => postMessage(s, { sourceName: () => 'अनलाइनखबर', lang: s.lang }),
+    fetchImpl,
+    now,
+  });
+  assert.deepEqual(result, { posted: 1, skipped: 1 });
+  const post = calls.find((c) => c.method === 'POST');
+  assert.ok(post.url.startsWith('https://graph.facebook.com/v23.0/123/feed'));
+  assert.deepEqual(post.body, { message: 'मन्त्रीले भने\n\nस्रोत: अनलाइनखबर', link: 'https://site.example/news/a/', access_token: 'tok' });
+  assert.equal(posted.a.postId, 'page_post1');
+  assert.ok(posted.b);
+  assert.deepEqual(Object.keys(prunePosted({ a: {}, zz: {} }, [{ id: 'a' }])), ['a']);
 });

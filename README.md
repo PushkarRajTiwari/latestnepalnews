@@ -66,6 +66,26 @@ Only production builds write summaries, at most 12 per build. The model and limi
 
 The archive of story pages and summaries is saved in the site itself at `/data/archive.json`, and each build reads it back from the live site. If a production build can't read it, the build fails and the previous version stays live, so nothing is lost.
 
+## Posting to Facebook
+
+Each production build can post the top stories (ones at least two outlets report) to the Facebook page: at most 3 per build, published in the last 6 hours, each posted once. A post is the outlet's headline, "स्रोत: <outlet>" and a link to the story's page on this site, so Facebook shows that page's picture and title. Settings are under `facebook` in `config/site.js`.
+
+It needs two environment variables in Vercel (**Project → Settings → Environment Variables**, Production only):
+
+- `FACEBOOK_PAGE_ID`: the page's numeric ID
+- `FACEBOOK_PAGE_TOKEN`: a page access token with `pages_manage_posts` and `pages_read_engagement`
+
+To get them:
+
+1. At [developers.facebook.com](https://developers.facebook.com), create an app (type **Business**) and add the **Facebook Login for Business** product, or use the "Manage everything on your Page" use case.
+2. Open the [Graph API Explorer](https://developers.facebook.com/tools/explorer/), pick the app, add the permissions `pages_show_list`, `pages_manage_posts` and `pages_read_engagement`, and click **Generate Access Token**. Allow it for the page.
+3. Paste that token into the [Access Token Debugger](https://developers.facebook.com/tools/debug/accesstoken/) and click **Extend Access Token**. Copy the long-lived token it shows.
+4. Back in the Explorer, paste the long-lived token and run `me/accounts`. Copy the page's `id` and `access_token`; a page token made from a long-lived user token does not expire.
+5. Add both to Vercel and redeploy.
+6. In the app's settings, fill in the privacy policy URL (`https://www.latestnepalnews.com/privacy/`) and switch the app to **Live**. While an app is in development mode, its posts are only visible to the app's admins.
+
+The build log says how many stories were posted. If posting fails, the site still updates.
+
 ## Common changes
 
 | To | Edit |

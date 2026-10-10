@@ -22,6 +22,7 @@ import Anthropic from '@anthropic-ai/sdk';
 
 import { mergeArchive, nepalDate, pruneSummaries } from './archive.js';
 import { topStories } from './cluster.js';
+import { choosePosts, postMessage, postToFacebook, prunePosted } from './facebook.js';
 import { fetchAll } from './fetch.js';
 import { fillImages } from './images.js';
 import { parseFeed } from './parse.js';
@@ -52,6 +53,9 @@ const basePath = (process.env.BASE_PATH || '').replace(/\/$/, '');
 // summaries, so only production spends on the API.
 const vercelEnv = process.env.VERCEL_ENV;
 const canSummarize = Boolean(process.env.ANTHROPIC_API_KEY) && !offline && (!vercelEnv || vercelEnv === 'production');
+// Facebook posts go out from production builds only.
+const canPostToFacebook =
+  Boolean(process.env.FACEBOOK_PAGE_ID && process.env.FACEBOOK_PAGE_TOKEN) && !offline && (!vercelEnv || vercelEnv === 'production');
 
 async function loadPrevious() {
   if (offline) return [];
@@ -71,7 +75,7 @@ async function loadPrevious() {
 // production build, fail rather than publish a site that has lost its
 // story pages and summaries; the previous deploy stays live.
 async function loadArchive() {
-  const empty = { stories: [], summaries: {} };
+  const empty = { stories: [], summaries: {}, facebook: {} };
   if (offline) return empty;
   try {
     const response = await fetch(`${siteUrl}/data/archive.json`, { signal: AbortSignal.timeout(60_000) });
@@ -83,7 +87,7 @@ async function loadArchive() {
     const data = await response.json();
     if (!Array.isArray(data.stories)) throw new Error('archive.json has no stories');
     console.log(`Loaded ${data.stories.length} archived stories and ${Object.keys(data.summaries || {}).length} summaries`);
-    return { stories: data.stories, summaries: data.summaries || {} };
+    return { stories: data.stories, summaries: data.summaries || {}, facebook: data.facebook || {} };
   } catch (error) {
     if (vercelEnv === 'production') throw new Error(`Could not load the story archive: ${error.message}`);
     console.log(`No story archive (${error.message}); starting fresh`);
@@ -171,6 +175,38 @@ async function main() {
     console.log(`\n${jobs.length} stories are waiting for a summary (summaries are off: ANTHROPIC_API_KEY is not set, or this isn't a production build)`);
   }
   summaries = pruneSummaries(summaries, stories);
+
+  // Share the top stories on the Facebook page. A failure here never stops the site from updating.
+  const facebook = prunePosted(archive.facebook, stories);
+  const fbConfig = site.facebook;
+  const live = new Set(archive.stories.map((story) => story.id));
+  const toPost = choosePosts(topStories(items, { lang: fbConfig.lang, now, limit: site.topStories }), {
+    live,
+    posted: facebook,
+    now,
+    minSources: fbConfig.minSources,
+    hours: fbConfig.hours,
+    max: fbConfig.maxPerBuild,
+  });
+  if (canPostToFacebook) {
+    const sourceName = (id) => feeds.find((f) => f.id === id)?.name || id;
+    try {
+      const done = await postToFacebook(toPost, {
+        pageId: process.env.FACEBOOK_PAGE_ID,
+        token: process.env.FACEBOOK_PAGE_TOKEN,
+        version: fbConfig.graphVersion,
+        posted: facebook,
+        urlFor: (story) => `${siteUrl}/${pathFor(story.lang, `news/${story.id}`)}`,
+        message: (story) => postMessage(story, { sourceName, lang: story.lang }),
+        now,
+      });
+      console.log(`Facebook: posted ${done.posted} stories${done.skipped ? `, ${done.skipped} were already on the page` : ''}`);
+    } catch (error) {
+      console.log(`Facebook posting failed: ${error.message}`);
+    }
+  } else if (toPost.length) {
+    console.log(`${toPost.length} stories would be posted to Facebook (posting is off: FACEBOOK_PAGE_ID / FACEBOOK_PAGE_TOKEN not set, or not a production build)`);
+  }
   const storyById = new Map(stories.map((story) => [story.id, story]));
   const usableSummary = (story) => {
     const summary = story.summaryId && summaries[story.summaryId];
@@ -272,7 +308,7 @@ ${urls.map((u) => `  <url><loc>${u.loc}</loc><lastmod>${u.lastmod}</lastmod></ur
   );
   await write('robots.txt', `User-agent: *\nAllow: /\n\nSitemap: ${siteUrl}/sitemap.xml\n`);
   await write('data/news.json', JSON.stringify({ generatedAt, items }));
-  await write('data/archive.json', JSON.stringify({ generatedAt, stories, summaries }));
+  await write('data/archive.json', JSON.stringify({ generatedAt, stories, summaries, facebook }));
   await write(
     'data/status.json',
     JSON.stringify(
