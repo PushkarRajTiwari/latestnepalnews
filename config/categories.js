@@ -45,6 +45,18 @@ export const categories = [
     np: ['स्वास्थ्य', 'अस्पताल', 'चिकित्सक', 'डाक्टर', 'डेंगु', 'कोभिड', 'खोप', 'उपचार', 'बिरामी', 'औषधि', 'हैजा', 'महामारी'],
   },
   {
+    // Nepalis living and working outside Nepal. Listed before "world" so a
+    // story such as "Nepalis in America ..." lands here, not in World.
+    slug: 'diaspora',
+    label: { np: 'प्रवास', en: 'Nepalis Abroad' },
+    description: {
+      np: 'विदेशमा रहेका नेपालीका ताजा समाचार: वैदेशिक रोजगार, भिसा, एनआरएनए र प्रवासी समुदाय, प्रमुख अनलाइन पत्रिकाबाट एकै ठाउँमा। हरेक ३० मिनेटमा अपडेट।',
+      en: 'Latest news for Nepalis abroad: foreign employment, visas and immigration, NRNA and Nepali communities around the world. Updated every 30 minutes.',
+    },
+    en: ['diaspora', 'nrn', 'nrna', 'non-resident nepali', 'non-resident nepalis', 'migrant', 'migrants', 'migrant worker', 'migrant workers', 'foreign employment', 'labour permit', 'labor permit', 'manpower', 'visa', 'visas', 'immigration', 'immigrants', 'deported', 'deportation', 'green card', 'dv lottery', 'tps', 'h-1b', 'work permit', 'abroad', 'overseas', 'nepali community', 'nepalis in', 'malaysia', 'qatar', 'saudi', 'uae', 'dubai', 'kuwait', 'gulf'],
+    np: ['प्रवास', 'गैरआवासीय', 'एनआरएन', 'वैदेशिक रोजगार', 'श्रम स्वीकृति', 'म्यानपावर', 'मेनपावर', 'आप्रवासन', 'अध्यागमन', 'भिसा', 'डीभी', 'ग्रिनकार्ड', 'ग्रीनकार्ड', 'टीपीएस', 'विदेशमा', 'विदेशबाट', 'अमेरिकामा', 'अस्ट्रेलियामा', 'बेलायतमा', 'जापानमा', 'कोरियामा', 'क्यानडामा', 'मलेसिया', 'कतार', 'साउदी', 'दुबई', 'युएई', 'यूएई', 'कुवेत', 'खाडी', 'नेपाली समुदाय'],
+  },
+  {
     slug: 'world',
     label: { np: 'विश्व', en: 'World' },
     en: ['world', 'international', 'india', 'china', 'united states', 'america', 'washington', 'united nations', 'russia', 'ukraine', 'israel', 'gaza', 'pakistan', 'bangladesh', 'global', 'europe', 'trump', 'beijing', 'delhi'],

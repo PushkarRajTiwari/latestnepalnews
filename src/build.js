@@ -232,7 +232,7 @@ async function main() {
           slug: category.slug,
           title: category.label[lang],
           items: byCategory.get(category.slug).slice(0, site.perCategoryPage),
-          description: ctx.t.categoryDescription(category.label[lang]),
+          description: category.description?.[lang] || ctx.t.categoryDescription(category.label[lang]),
         })
       );
     }

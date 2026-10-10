@@ -34,6 +34,12 @@ export const feeds = [
   { id: 'khabarhub-en', name: 'Khabarhub English', lang: 'en', url: 'https://english.khabarhub.com/feed', home: 'https://english.khabarhub.com' },
   { id: 'ratopati-en', name: 'Ratopati English', lang: 'en', url: 'https://english.ratopati.com/feed', home: 'https://english.ratopati.com' },
 
+  // Nepalis abroad. Listed after the general feeds so that when a story also
+  // appears in an outlet's main feed, it keeps the diaspora category.
+  { id: 'usnepalpost', name: 'यूएस नेपाल पोस्ट', lang: 'np', url: 'https://usnepalpost.com/feed', home: 'https://usnepalpost.com', category: 'diaspora' },
+  { id: 'ratopati-prawas', name: 'रातोपाटी प्रवास', lang: 'np', url: 'https://www.ratopati.com/category/prawash/feed', home: 'https://www.ratopati.com/category/prawash', category: 'diaspora' },
+  { id: 'setopati-global', name: 'सेतोपाटी ग्लोबल', lang: 'np', url: 'https://www.setopati.com/global/feed', home: 'https://www.setopati.com/global', category: 'diaspora' },
+
   // Off for now. On 2026-10-08 these refused automated requests (HTTP 403)
   // or had no RSS feed. Move one back up to try it again.
   // { id: 'ekantipur', name: 'कान्तिपुर', lang: 'np', url: 'https://ekantipur.com/rss', home: 'https://ekantipur.com' },

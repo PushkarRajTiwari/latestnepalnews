@@ -66,6 +66,10 @@ test('categorizes Nepali and English headlines', () => {
   assert.equal(categorize({ title: 'Bus tickets for Dashain go on sale', categories: [] }), 'national');
   // "us" inside a word must not trigger anything
   assert.equal(categorize({ title: 'Business as usual for bus drivers', categories: [] }), 'business');
+  // Nepalis abroad beat World when both match
+  assert.equal(categorize({ title: 'अमेरिकामा नेपाली समुदायले तीज मनायो', categories: [] }), 'diaspora');
+  assert.equal(categorize({ title: 'Nepali migrant workers stranded in Malaysia', categories: [] }), 'diaspora');
+  assert.equal(categorize({ title: 'China and India hold border talks', categories: [] }), 'world');
 });
 
 test('normalizeItems drops bad links and clamps future dates', () => {
