@@ -109,7 +109,23 @@ function logo() {
 // so the language switch and hreflang tags can point at the twin page. Pages
 // with no twin (a story's own page) set `twin: false`; their language switch
 // goes to the other language's homepage.
-export function layout(ctx, { slug = '', title, description, body, active = slug, noindex = false, twin = true, image, type = 'website' }) {
+// Structured data for search engines. "<" is escaped so feed text can never
+// close the script tag.
+function ldJson(data) {
+  return `<script type="application/ld+json">${JSON.stringify(data).replace(/</g, '\\u003c')}</script>`;
+}
+
+function organization(ctx) {
+  return {
+    '@type': 'NewsMediaOrganization',
+    name: ctx.t.siteName,
+    url: ctx.absolute(pathFor(ctx.lang)),
+    logo: { '@type': 'ImageObject', url: ctx.absolute('og-image.png') },
+    ...(site.contactEmail ? { email: site.contactEmail } : {}),
+  };
+}
+
+export function layout(ctx, { slug = '', title, description, body, active = slug, noindex = false, twin = true, image, type = 'website', published, structured }) {
   const { t, lang } = ctx;
   const other = lang === 'np' ? 'en' : 'np';
   const pageTitle = title ? `${title} | ${t.siteName}` : `${t.siteName}: ${t.tagline}`;
@@ -120,14 +136,13 @@ export function layout(ctx, { slug = '', title, description, body, active = slug
 <link rel="alternate" hreflang="x-default" href="${e(ctx.absolute(pathFor('np', slug)))}">`
     : '';
   const jsonLd = slug
-    ? ''
-    : `<script type="application/ld+json">${JSON.stringify({
+    ? structured
+      ? ldJson({ '@context': 'https://schema.org', ...structured })
+      : ''
+    : ldJson({
         '@context': 'https://schema.org',
-        '@type': 'WebSite',
-        name: t.siteName,
-        url: canonical,
-        inLanguage: t.htmlLang,
-      })}</script>`;
+        '@graph': [{ '@type': 'WebSite', name: t.siteName, url: canonical, inLanguage: t.htmlLang }, organization(ctx)],
+      });
   return `<!doctype html>
 <html lang="${t.htmlLang}">
 <head>
@@ -135,7 +150,7 @@ export function layout(ctx, { slug = '', title, description, body, active = slug
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${e(pageTitle)}</title>
 <meta name="description" content="${e(desc)}">
-${noindex ? '<meta name="robots" content="noindex">' : ''}
+<meta name="robots" content="${noindex ? 'noindex, follow' : 'max-image-preview:large'}">
 <link rel="canonical" href="${e(canonical)}">
 ${hreflang}
 <meta property="og:type" content="${type}">
@@ -144,6 +159,7 @@ ${hreflang}
 <meta property="og:description" content="${e(desc)}">
 <meta property="og:url" content="${e(canonical)}">
 <meta property="og:image" content="${e(imageUrl(image) || ctx.absolute('og-image.png'))}">
+${published ? `<meta property="article:published_time" content="${e(published)}">` : ''}
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#dc143c">
 <link rel="icon" href="${ctx.href('favicon.svg')}" type="image/svg+xml">
@@ -234,10 +250,10 @@ export function renderHome(ctx, { top, byCategory, latest }) {
   return layout(ctx, { body });
 }
 
-export function renderList(ctx, { slug, title, items }) {
+export function renderList(ctx, { slug, title, items, description }) {
   const body = `<div class="page-head"><h1>${e(title)}</h1><p class="count">${e(ctx.t.stories(items.length))}</p></div>
 ${items.length ? `<div class="list">${items.map((item) => story(item, ctx, { size: 'row' })).join('')}</div>` : emptyState(ctx)}`;
-  return layout(ctx, { slug, title, body });
+  return layout(ctx, { slug, title, body, description });
 }
 
 export function renderSources(ctx, { feeds, status, counts }) {
@@ -335,6 +351,19 @@ export function renderStory(ctx, { item, summary, others = [], more = [] }) {
 </article>
 ${more.length ? `<section class="more-news">${sectionHead(ctx, ctx.t.moreNews, category?.slug || 'latest')}<div class="list">${more.map((m) => story(m, ctx, { size: 'row', showExcerpt: false })).join('')}</div></section>` : ''}`;
   const description = summary ? summary.text.replace(/\s+/g, ' ').slice(0, 200) : item.excerpt || item.title;
+  const structured = {
+    '@type': 'NewsArticle',
+    headline: item.title.slice(0, 110),
+    description,
+    datePublished: item.published,
+    inLanguage: ctx.t.htmlLang,
+    mainEntityOfPage: url,
+    ...(img ? { image: [img] } : {}),
+    ...(category ? { articleSection: category.label[ctx.lang] } : {}),
+    isBasedOn: [item, ...others].map((o) => safeUrl(o.link)).filter(Boolean),
+    author: organization(ctx),
+    publisher: organization(ctx),
+  };
   return layout(ctx, {
     slug: `news/${item.id}`,
     active: category?.slug,
@@ -344,6 +373,8 @@ ${more.length ? `<section class="more-news">${sectionHead(ctx, ctx.t.moreNews, c
     twin: false,
     image: item.image,
     type: 'article',
+    published: item.published,
+    structured,
     // Pages with only a headline and an excerpt add little for search
     // engines; only summarized stories are indexed.
     noindex: !summary,

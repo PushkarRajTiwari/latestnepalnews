@@ -220,12 +220,19 @@ test('story pages keep readers on the site and link out once', () => {
   assert.ok(html.includes('href="/en/news/b/"'));
   assert.ok(!html.includes('noindex'));
   assert.ok(!html.includes('rel="alternate" hreflang'));
+  const ld = JSON.parse(html.match(/<script type="application\/ld\+json">(.*?)<\/script>/)[1]);
+  assert.equal(ld['@type'], 'NewsArticle');
+  assert.deepEqual(ld.isBasedOn, ['https://kp.example/a', 'https://ht.example/b']);
 
   b.image = 'http://kp.example/old.jpg';
   const plain = renderStory(ctx, { item: b });
   assert.ok(plain.includes('src="https://kp.example/old.jpg"'));
   assert.ok(plain.includes('noindex'));
   assert.ok(plain.includes('Excerpt from'));
+
+  b.title = 'Bad </script><script>alert(1)</script>';
+  const tricky = renderStory(ctx, { item: b });
+  assert.equal(tricky.split('</script>').length - 1, 2); // JSON-LD and app.js only
 });
 
 test('headline cards link to the story page on the site', () => {

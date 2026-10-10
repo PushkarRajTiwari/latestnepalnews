@@ -2,7 +2,7 @@
 export const site = {
   // Public address of the site. The build workflow overrides this with the
   // address GitHub Pages reports, so it is only used for local builds.
-  url: 'https://latestnepalnews.com',
+  url: 'https://www.latestnepalnews.com',
 
   // Shown on the About and Disclaimer pages when set, e.g. 'hello@latestnepalnews.com'.
   contactEmail: '',

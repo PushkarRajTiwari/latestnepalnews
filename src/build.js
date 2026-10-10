@@ -207,11 +207,16 @@ async function main() {
     );
 
     await page('', renderHome(ctx, { top, byCategory: homeSections, latest: mine.slice(0, site.latestSidebar) }));
-    await page('latest', renderList(ctx, { slug: 'latest', title: ctx.t.latestNews, items: mine.slice(0, site.perLatestPage) }));
+    await page('latest', renderList(ctx, { slug: 'latest', title: ctx.t.latestNews, items: mine.slice(0, site.perLatestPage), description: ctx.t.latestDescription }));
     for (const category of allCategories) {
       await page(
         category.slug,
-        renderList(ctx, { slug: category.slug, title: category.label[lang], items: byCategory.get(category.slug).slice(0, site.perCategoryPage) })
+        renderList(ctx, {
+          slug: category.slug,
+          title: category.label[lang],
+          items: byCategory.get(category.slug).slice(0, site.perCategoryPage),
+          description: ctx.t.categoryDescription(category.label[lang]),
+        })
       );
     }
     const counts = new Map();

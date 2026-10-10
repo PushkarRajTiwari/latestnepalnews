@@ -42,6 +42,8 @@ export const strings = {
     earlierBriefs: 'अघिल्ला दिनहरू',
     briefEmpty: 'यो दिनको सार अझै तयार भएको छैन।',
     briefNote: 'सारांशहरू स्वचालित रूपमा तयार गरिएका हुन्। पूरा समाचार मूल वेबसाइटमा पढ्नुहोस्।',
+    latestDescription: 'नेपालका प्रमुख अनलाइन पत्रिकाका पछिल्ला समाचार, नयाँ पहिले। हरेक ३० मिनेटमा अपडेट।',
+    categoryDescription: (label) => `${label} सम्बन्धी नेपालका ताजा समाचार, प्रमुख अनलाइन पत्रिकाबाट एकै ठाउँमा। हरेक ३० मिनेटमा अपडेट।`,
   },
   en: {
     htmlLang: 'en',
@@ -84,6 +86,8 @@ export const strings = {
     earlierBriefs: 'Earlier briefs',
     briefEmpty: 'No brief for this day yet.',
     briefNote: 'Summaries are generated automatically. Read the full stories on the original websites.',
+    latestDescription: "The newest stories from Nepal's leading news websites, most recent first. Updated every 30 minutes.",
+    categoryDescription: (label) => `Latest ${label.toLowerCase()} news from Nepal, from the country's leading news websites in one place. Updated every 30 minutes.`,
   },
 };
 
