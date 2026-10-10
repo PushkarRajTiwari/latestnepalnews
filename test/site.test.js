@@ -335,11 +335,24 @@ test('Facebook: posts credited headlines with a link, and skips ones already on 
     fetchImpl,
     now,
   });
-  assert.deepEqual(result, { posted: 1, skipped: 1 });
+  assert.deepEqual(result, { posted: 1, skipped: 1, canRead: true });
   const post = calls.find((c) => c.method === 'POST');
   assert.ok(post.url.startsWith('https://graph.facebook.com/v23.0/123/feed'));
   assert.deepEqual(post.body, { message: 'मन्त्रीले भने\n\nस्रोत: अनलाइनखबर', link: 'https://site.example/news/a/', access_token: 'tok' });
   assert.equal(posted.a.postId, 'page_post1');
   assert.ok(posted.b);
   assert.deepEqual(Object.keys(prunePosted({ a: {}, zz: {} }, [{ id: 'a' }])), ['a']);
+});
+
+test('Facebook: still posts when the token cannot read the page', async () => {
+  const fetchImpl = async (url, init) =>
+    init.method === 'GET'
+      ? new Response(JSON.stringify({ error: { message: '(#10) requires pages_read_engagement' } }), { status: 400 })
+      : new Response(JSON.stringify({ id: 'p1' }));
+  const posted = {};
+  const result = await postToFacebook([story('a', 'kp', 'A')], {
+    pageId: '1', token: 't', version: 'v23.0', posted, urlFor: (s) => `https://x/news/${s.id}/`, message: (s) => s.title, fetchImpl, now,
+  });
+  assert.deepEqual(result, { posted: 1, skipped: 0, canRead: false });
+  assert.equal(posted.a.postId, 'p1');
 });

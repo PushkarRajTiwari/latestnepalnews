@@ -44,14 +44,21 @@ async function graph(path, { token, version, method = 'GET', body, fetchImpl = f
 // data/archive.json; the page's own recent posts are checked too, so a story
 // is never posted twice even if a build that posted it failed to deploy.
 export async function postToFacebook(stories, { pageId, token, version, posted, urlFor, message, fetchImpl, now = new Date() }) {
-  if (!stories.length) return { posted: 0, skipped: 0 };
-  const recent = await graph(`${pageId}/feed?fields=attachments{url}&limit=50`, { token, version, fetchImpl });
-  // Facebook wraps links (l.facebook.com/l.php?u=...), so decode before matching.
-  const raw = JSON.stringify(recent.data || []);
-  let seen = raw;
+  if (!stories.length) return { posted: 0, skipped: 0, canRead: true };
+  // Reading the page needs the pages_read_engagement permission. Without it,
+  // rely on `posted` alone.
+  let seen = '';
+  let canRead = true;
   try {
-    seen = decodeURIComponent(decodeURIComponent(raw));
-  } catch {}
+    const recent = await graph(`${pageId}/feed?fields=attachments{url}&limit=50`, { token, version, fetchImpl });
+    // Facebook wraps links (l.facebook.com/l.php?u=...), so decode before matching.
+    seen = JSON.stringify(recent.data || []);
+    try {
+      seen = decodeURIComponent(decodeURIComponent(seen));
+    } catch {}
+  } catch {
+    canRead = false;
+  }
   let count = 0;
   let skipped = 0;
   for (const story of stories) {
@@ -70,7 +77,7 @@ export async function postToFacebook(stories, { pageId, token, version, posted, 
     posted[story.id] = { postId: result.id || null, at: now.toISOString() };
     count++;
   }
-  return { posted: count, skipped };
+  return { posted: count, skipped, canRead };
 }
 
 // Forget stories that have left the archive.

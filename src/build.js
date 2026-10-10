@@ -200,7 +200,10 @@ async function main() {
         message: (story) => postMessage(story, { sourceName, lang: story.lang }),
         now,
       });
-      console.log(`Facebook: posted ${done.posted} stories${done.skipped ? `, ${done.skipped} were already on the page` : ''}`);
+      console.log(
+        `Facebook: posted ${done.posted} stories${done.skipped ? `, ${done.skipped} were already on the page` : ''}` +
+          `${done.canRead ? '' : ' (could not read the page to double-check for repeats: the token lacks pages_read_engagement)'}`
+      );
     } catch (error) {
       console.log(`Facebook posting failed: ${error.message}`);
     }
