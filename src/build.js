@@ -23,7 +23,6 @@ import Anthropic from '@anthropic-ai/sdk';
 import { mergeArchive, nepalDate, pruneSummaries } from './archive.js';
 import { topStories } from './cluster.js';
 import { fetchAll } from './fetch.js';
-import { fillImages } from './images.js';
 import { parseFeed } from './parse.js';
 import {
   context,
@@ -128,14 +127,6 @@ async function main() {
   console.log(`${working}/${feeds.length} feeds working`);
 
   const fresh = results.flatMap((r) => r.items);
-  if (!offline) {
-    const images = await fillImages(fresh, [...previous, ...archive.stories]);
-    const withImage = fresh.filter((item) => item.image).length;
-    console.log(
-      `Images: ${withImage}/${fresh.length} stories have one; ${images.found} of ${images.checked} article pages read gave one` +
-        `${images.failed ? `, ${images.failed} could not be read` : ''}${images.left ? `, ${images.left} wait for the next build` : ''}`
-    );
-  }
   const known = new Set(feeds.map((f) => f.id));
   const items = mergeItems(previous.filter((item) => known.has(item.source)), fresh, now);
   if (!items.length && !offline) {

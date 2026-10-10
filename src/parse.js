@@ -38,12 +38,8 @@ function pickImage(entry, html, base) {
     if (/^image\//i.test(enclosure['@type'] || '')) candidates.push(enclosure['@url']);
   }
   if (entry['media:group']) {
-    const group = entry['media:group'];
-    for (const media of [...asArray(group['media:content']), ...asArray(group['media:thumbnail'])]) candidates.push(media['@url']);
+    for (const media of asArray(entry['media:group']['media:content'])) candidates.push(media['@url']);
   }
-  // Onlinekhabar and some other WordPress feeds use a plain <image> per item.
-  for (const node of asArray(entry.image)) candidates.push(typeof node === 'object' ? text(node.url) || node['@href'] || node['@url'] : node);
-  for (const node of asArray(entry['itunes:image'])) candidates.push(node['@href']);
   candidates.push(firstImageInHtml(html));
   for (const candidate of candidates) {
     const url = safeUrl(candidate, base);

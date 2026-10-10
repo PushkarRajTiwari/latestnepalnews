@@ -5,7 +5,6 @@ import { test } from 'node:test';
 import { mergeArchive, pruneSummaries } from '../src/archive.js';
 import { categorize } from '../src/categorize.js';
 import { stem, topStories } from '../src/cluster.js';
-import { fillImages, pageImage } from '../src/images.js';
 import { discoverFeedUrl, parseFeed } from '../src/parse.js';
 import { context, renderList, renderStory } from '../src/render.js';
 import { mergeItems, normalizeItems } from '../src/store.js';
@@ -240,52 +239,4 @@ test('headline cards link to the story page on the site', () => {
   const html = renderList(enCtx(), { slug: 'latest', title: 'Latest', items: budgetStories() });
   assert.ok(html.includes('href="/en/news/a/"'));
   assert.ok(!html.includes('href="https://kp.example/a"'));
-});
-
-test('reads a plain <image> tag on an RSS item, as Onlinekhabar sends', () => {
-  const xml = `<rss><channel><image><url>https://ok.example/logo.png</url></image>
-<item><title>A</title><link>https://ok.example/a</link><image>https://ok.example/a.jpg</image></item></channel></rss>`;
-  assert.equal(parseFeed(xml, 'https://ok.example/feed')[0].image, 'https://ok.example/a.jpg');
-});
-
-test('finds the og:image on an article page', () => {
-  const head = `<head><meta name="twitter:image" content="https://x.example/tw.jpg">
-<meta content='/uploads/a.jpg?w=1&amp;h=2' property='og:image' /></head>`;
-  assert.equal(pageImage(head, 'https://x.example/story/1'), 'https://x.example/uploads/a.jpg?w=1&h=2');
-  assert.equal(pageImage('<link rel="image_src" href="https://x.example/i.png">', 'https://x.example/'), 'https://x.example/i.png');
-  assert.equal(pageImage('<meta property="og:title" content="t">', 'https://x.example/'), null);
-});
-
-test('fills missing images from earlier builds, then from article pages, reading each page once', async () => {
-  const items = [
-    story('a', 'kp', 'Has one', 10, { image: 'https://kp.example/a.jpg' }),
-    story('b', 'kp', 'Known from last build'),
-    story('c', 'kp', 'Page has none last time'),
-    story('d', 'kp', 'New with og'),
-    story('e', 'kp', 'New without og'),
-    story('f', 'kp', 'Site down'),
-  ];
-  const known = [{ id: 'b', image: 'https://kp.example/b.jpg' }, { id: 'c', image: null, noImage: true }];
-  const read = [];
-  const pages = {
-    'https://kp.example/d': '<meta property="og:image" content="https://kp.example/d.jpg">',
-    'https://kp.example/e': '<title>e</title>',
-  };
-  const result = await fillImages(items, known, {
-    fetchPage: async (url) => {
-      read.push(url);
-      if (!pages[url]) throw new Error('down');
-      return { html: pages[url], url };
-    },
-  });
-  assert.deepEqual(read.sort(), ['https://kp.example/d', 'https://kp.example/e', 'https://kp.example/f']);
-  assert.deepEqual(items.map((i) => i.image), ['https://kp.example/a.jpg', 'https://kp.example/b.jpg', null, 'https://kp.example/d.jpg', null, null]);
-  assert.equal(items[4].noImage, true);
-  assert.equal(items[5].noImage, undefined);
-  assert.deepEqual(result, { reused: 2, checked: 3, found: 1, failed: 1, left: 0 });
-});
-
-test('cards without a picture show the outlet placeholder', () => {
-  const html = renderList(enCtx(), { slug: 'latest', title: 'Latest', items: [story('a', 'kp', 'No picture')] });
-  assert.match(html, /class="thumb thumb-sm thumb-ph"[^>]*><span>Kathmandu Post<\/span>|class="thumb thumb-ph"[^>]*><span>Kathmandu Post<\/span>/);
 });
