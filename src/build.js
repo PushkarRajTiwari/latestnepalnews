@@ -145,6 +145,14 @@ async function main() {
 
   // Every story from the last storyDays days keeps its own page.
   const stories = mergeArchive(archive.stories.filter((story) => known.has(story.source)), items, { now, days: site.storyDays });
+  if (!offline) {
+    // Stories that have already left their outlet's feed still need a picture
+    // for their own page and any card that shows them.
+    const later = await fillImages(stories, [], { max: 60 });
+    const storyImage = new Map(stories.filter((story) => story.image).map((story) => [story.id, story.image]));
+    for (const item of items) if (!item.image && storyImage.has(item.id)) item.image = storyImage.get(item.id);
+    if (later.checked) console.log(`Images for older stories: ${later.found} of ${later.checked} article pages read gave one${later.left ? `, ${later.left} wait` : ''}`);
+  }
   let summaries = archive.summaries;
   const jobs = ['np', 'en']
     .flatMap((lang) => planSummaries(stories, summaries, { lang, now, hours: site.summaries.hours }))
