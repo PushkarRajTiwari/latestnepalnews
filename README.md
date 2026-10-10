@@ -4,7 +4,7 @@
 
 - Nepali site at `/`, English at `/en/`, with a language switch on every page.
 - **Top stories**: when several outlets report the same story, it shows once with "also covered by" links.
-- Topic pages: Politics, Business, Sports, Entertainment, Tech, Health, World and Nepal.
+- Topic pages: Politics, Business, Sports, Entertainment, Tech, Health, Nepalis Abroad, World and Nepal.
 - **Story pages**: every headline opens its own page on the site, with share buttons, a preview card for social media, and a button to read the full story at the source. Pages stay up for 30 days.
 - **Summaries**: when several outlets cover the same story, Claude writes a short summary from their headlines and excerpts. These pages are the ones listed in the sitemap.
 - **Daily brief**: each day's biggest summarized stories on one page, at `/brief/`.
