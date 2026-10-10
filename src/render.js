@@ -52,10 +52,13 @@ function meta(item, ctx) {
   return `<div class="meta"><span class="source">${e(ctx.sourceName(item.source))}</span><span aria-hidden="true">·</span>${time(item, ctx)}</div>`;
 }
 
-function image(item, cls) {
+// A story's picture, or a branded placeholder naming the outlet when it has
+// none (app.js swaps in the same placeholder when a picture fails to load).
+function image(item, cls, ctx) {
   const src = imageUrl(item.image);
-  if (!src) return '';
-  return `<div class="${cls}"><img src="${e(src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"></div>`;
+  const label = e(ctx.sourceName(item.source));
+  if (!src) return `<div class="${cls} thumb-ph" aria-hidden="true"><span>${label}</span></div>`;
+  return `<div class="${cls}" data-ph="${label}"><img src="${e(src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"></div>`;
 }
 
 function storyLink(item, inner, ctx) {
@@ -77,7 +80,7 @@ function related(list, ctx) {
 // A headline card. size: "lead" | "card" | "row"
 function story(item, ctx, { size = 'card', relatedItems = [], showExcerpt = true } = {}) {
   const sourceCount = relatedItems.length ? `<span class="badge">${e(ctx.t.sourcesCount(relatedItems.length + 1))}</span>` : '';
-  const thumb = size === 'row' ? image(item, 'thumb thumb-sm') : image(item, 'thumb');
+  const thumb = size === 'row' ? image(item, 'thumb thumb-sm', ctx) : image(item, 'thumb', ctx);
   return `<article class="story story-${size}${item.image ? ' has-image' : ''}">
   ${storyLink(item, `${thumb}<h3>${e(item.title)}</h3>`, ctx)}
   ${showExcerpt && item.excerpt ? `<p class="excerpt">${e(item.excerpt)}</p>` : ''}

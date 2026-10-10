@@ -49,11 +49,19 @@
     copy.hidden = true;
   }
 
-  // Publishers sometimes block hotlinked images; drop the empty frame. Some
-  // images fail before this script runs, so check those that already finished.
+  // Publishers sometimes block hotlinked images; show the outlet placeholder
+  // instead (or drop the frame where there is none). Some images fail before
+  // this script runs, so check those that already finished.
   function dropFrame(img) {
     var frame = img.closest('.thumb');
-    if (frame) frame.remove();
+    if (!frame) return;
+    var label = frame.getAttribute('data-ph');
+    if (label === null) return frame.remove();
+    var span = document.createElement('span');
+    span.textContent = label;
+    frame.classList.add('thumb-ph');
+    frame.setAttribute('aria-hidden', 'true');
+    frame.replaceChildren(span);
   }
   document.addEventListener('error', function (event) {
     if (event.target && event.target.tagName === 'IMG') dropFrame(event.target);
