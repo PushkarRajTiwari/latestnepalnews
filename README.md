@@ -68,7 +68,7 @@ The archive of story pages and summaries is saved in the site itself at `/data/a
 
 ## Posting to Facebook
 
-Each production build can post the top stories (ones at least two outlets report) to the Facebook page: at most 3 per build, published in the last 6 hours, each posted once. A post is the outlet's headline, "स्रोत: <outlet>" and a link to the story's page on this site, so Facebook shows that page's picture and title. Settings are under `facebook` in `config/site.js`.
+Each production build can post the top stories to the Facebook page (the ones most outlets report go first): at most 3 per build, published in the last 6 hours, each posted once. A post is the outlet's headline, "स्रोत: <outlet>" and a link to the story's page on this site, so Facebook shows that page's picture and title. Settings are under `facebook` in `config/site.js`.
 
 It needs two environment variables in Vercel (**Project → Settings → Environment Variables**, Production only):
 

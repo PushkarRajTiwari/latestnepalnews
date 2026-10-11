@@ -39,8 +39,9 @@ export const site = {
     lang: 'np',
     // At most this many posts per build.
     maxPerBuild: 3,
-    // Only stories at least this many outlets report.
-    minSources: 2,
+    // Only stories at least this many outlets report (1 = any story).
+    // Stories more outlets report still go first.
+    minSources: 1,
     // Only stories published in the last this-many hours.
     hours: 6,
     graphVersion: 'v23.0',
