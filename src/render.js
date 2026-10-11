@@ -93,6 +93,11 @@ function compact(item, ctx) {
   return `<li class="compact">${storyLink(item, e(item.title), ctx)}${meta(item, ctx)}</li>`;
 }
 
+// Moon in light mode, sun in dark mode (CSS shows one).
+function themeIcons() {
+  return `<svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>`;
+}
+
 function nav(ctx, active) {
   const link = (slug, label) =>
     `<a href="${ctx.href(pathFor(ctx.lang, slug))}"${active === slug ? ' aria-current="page"' : ''}>${e(label)}</a>`;
@@ -151,6 +156,7 @@ export function layout(ctx, { slug = '', title, description, body, active = slug
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{var theme=localStorage.getItem('theme');if(theme==='light'||theme==='dark')document.documentElement.setAttribute('data-theme',theme)}catch(e){}</script>
 <title>${e(pageTitle)}</title>
 <meta name="description" content="${e(desc)}">
 <meta name="robots" content="${noindex ? 'noindex, follow' : 'max-image-preview:large'}">
@@ -177,7 +183,10 @@ ${jsonLd}
 <header class="masthead">
   <div class="topbar wrap">
     <span class="today">${e(formatDate(ctx.generatedAt, lang))}</span>
-    <a class="lang-switch" href="${ctx.href(pathFor(other, twin ? slug : ''))}" hreflang="${strings[other].htmlLang}" lang="${strings[other].htmlLang}">${e(t.switchTo)}</a>
+    <div class="topbar-actions">
+      <button class="theme-toggle" type="button" data-theme-toggle aria-label="${e(t.themeToggle)}" title="${e(t.themeToggle)}" hidden>${themeIcons()}</button>
+      <a class="lang-switch" href="${ctx.href(pathFor(other, twin ? slug : ''))}" hreflang="${strings[other].htmlLang}" lang="${strings[other].htmlLang}">${e(t.switchTo)}</a>
+    </div>
   </div>
   <div class="brand wrap">
     <a class="logo" href="${ctx.href(pathFor(lang))}">${logo()}<span class="logo-text">${e(t.siteName)}</span></a>

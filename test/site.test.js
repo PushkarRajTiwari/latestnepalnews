@@ -238,7 +238,7 @@ test('story pages keep readers on the site and link out once', () => {
 
   b.title = 'Bad </script><script>alert(1)</script>';
   const tricky = renderStory(ctx, { item: b });
-  assert.equal(tricky.split('</script>').length - 1, 2); // JSON-LD and app.js only
+  assert.equal(tricky.split('</script>').length - 1, 3); // theme, JSON-LD and app.js only
 });
 
 test('headline cards link to the story page on the site', () => {

@@ -16,8 +16,10 @@
   color-scheme: light;
 }
 
+/* Dark colours follow the device setting, unless the visitor picked a theme
+   with the header button (data-theme on <html>, set by the script in <head>). */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #111317;
     --surface: #1a1d23;
     --text: #eceef2;
@@ -28,6 +30,17 @@
     --badge-text: #a9c1ff;
     color-scheme: dark;
   }
+}
+:root[data-theme="dark"] {
+    --bg: #111317;
+    --surface: #1a1d23;
+    --text: #eceef2;
+    --muted: #a0a7b4;
+    --line: #2a2e36;
+    --link-hover: #ff6b81;
+    --badge-bg: #1d2a47;
+    --badge-text: #a9c1ff;
+    color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -59,10 +72,25 @@ a:focus-visible { outline: 3px solid var(--brand-2); outline-offset: 2px; border
   border: 1.5px solid var(--brand-2); color: var(--brand-2); border-radius: 999px; padding: 2px 14px; font-weight: 700;
 }
 .lang-switch:hover { background: var(--brand-2); color: #fff; }
-@media (prefers-color-scheme: dark) {
-  .lang-switch { border-color: var(--badge-text); color: var(--badge-text); }
-  .lang-switch:hover { background: var(--badge-text); color: var(--bg); }
+.theme-toggle {
+  display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0;
+  border: 1.5px solid var(--line); border-radius: 999px; background: transparent; color: var(--text); cursor: pointer;
 }
+.theme-toggle:hover { border-color: var(--brand-2); }
+.theme-toggle:focus-visible { outline: 3px solid var(--brand-2); outline-offset: 2px; }
+.theme-toggle svg { width: 18px; height: 18px; }
+.theme-toggle .icon-sun { display: none; }
+.topbar-actions { display: flex; align-items: center; gap: 10px; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .lang-switch { border-color: var(--badge-text); color: var(--badge-text); }
+  :root:not([data-theme="light"]) .lang-switch:hover { background: var(--badge-text); color: var(--bg); }
+  :root:not([data-theme="light"]) .theme-toggle .icon-sun { display: block; }
+  :root:not([data-theme="light"]) .theme-toggle .icon-moon { display: none; }
+}
+:root[data-theme="dark"] .lang-switch { border-color: var(--badge-text); color: var(--badge-text); }
+:root[data-theme="dark"] .lang-switch:hover { background: var(--badge-text); color: var(--bg); }
+:root[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
+:root[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
 
 .brand { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 10px; padding-bottom: 12px; flex-wrap: wrap; }
 .logo { display: flex; align-items: center; gap: 10px; }
@@ -97,7 +125,8 @@ main { padding-top: 24px; padding-bottom: 48px; }
 .meta-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
 .meta { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: 14px; }
 .source { font-weight: 700; color: var(--brand-2); }
-@media (prefers-color-scheme: dark) { .source { color: var(--badge-text); } }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .source { color: var(--badge-text); } }
+:root[data-theme="dark"] .source { color: var(--badge-text); }
 .badge { background: var(--badge-bg); color: var(--badge-text); border-radius: 999px; padding: 0 10px; font-size: 13px; font-weight: 700; }
 
 .thumb { aspect-ratio: 16 / 9; overflow: hidden; border-radius: var(--radius); background: var(--surface); margin-bottom: 10px; }

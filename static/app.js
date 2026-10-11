@@ -49,6 +49,20 @@
     copy.hidden = true;
   }
 
+  // Light/dark button: flips whichever theme is showing and remembers it.
+  var toggle = document.querySelector('[data-theme-toggle]');
+  if (toggle) {
+    toggle.hidden = false;
+    toggle.addEventListener('click', function () {
+      var root = document.documentElement;
+      var current = root.getAttribute('data-theme') ||
+        (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      var next = current === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      try { localStorage.setItem('theme', next); } catch (e) {}
+    });
+  }
+
   // Publishers sometimes block hotlinked images; show the outlet placeholder
   // instead (or drop the frame where there is none). Some images fail before
   // this script runs, so check those that already finished.
