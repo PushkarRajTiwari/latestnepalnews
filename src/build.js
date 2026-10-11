@@ -32,6 +32,7 @@ import {
   context,
   pathFor,
   renderBrief,
+  renderConverter,
   renderHome,
   renderList,
   renderNotFound,
@@ -248,6 +249,8 @@ async function main() {
   const assetVersion = createHash('sha1')
     .update(await readFile(join(root, 'static', 'style.css')))
     .update(await readFile(join(root, 'static', 'app.js')))
+    .update(await readFile(join(root, 'static', 'converter.js')))
+    .update(await readFile(join(root, 'static', 'nepali-date.js')))
     .digest('hex')
     .slice(0, 8);
 
@@ -304,6 +307,7 @@ async function main() {
     for (const item of items) counts.set(item.source, (counts.get(item.source) || 0) + 1);
     await page('sources', renderSources(ctx, { feeds: feeds.filter((f) => f.lang === lang), status, counts }));
     for (const key of ['about', 'disclaimer', 'privacy']) await page(key, renderPage(ctx, key));
+    await page('date-converter', renderConverter(ctx));
     if (lang === 'np') await write('404.html', renderNotFound(ctx));
 
     const latestBrief = briefDates[0] || nepalDate(generatedAt);

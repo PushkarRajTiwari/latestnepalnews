@@ -436,3 +436,18 @@ test('Facebook: skips other outlets\' versions and same-topic stories already po
   assert.deepEqual(picked.map((x) => x.id), ['c']);
   assert.deepEqual(picked[0].memberIds, ['c']);
 });
+
+test('converts Bikram Sambat dates to AD and back', async () => {
+  const { adToBs, bsToAd, formatBs, todayBs } = await import('../static/nepali-date.js');
+  // New Year's Day (1 Baisakh) in recent years, from the official calendar.
+  for (const [bs, ad] of [[2070, '2013-04-14'], [2080, '2023-04-14'], [2081, '2024-04-13'], [2083, '2026-04-14']]) {
+    const date = bsToAd(bs, 1, 1);
+    assert.equal(`${date.year}-${String(date.month).padStart(2, '0')}-${String(date.day).padStart(2, '0')}`, ad);
+  }
+  assert.deepEqual(adToBs(2026, 10, 10), { year: 2083, month: 6, day: 24, weekday: 6 });
+  assert.equal(formatBs(adToBs(2026, 10, 10), 'np'), '२४ असोज २०८३, शनिबार');
+  assert.equal(bsToAd(2083, 6, 33), null);
+  assert.equal(adToBs(1900, 1, 1), null);
+  // Just after midnight in Nepal is already the next day.
+  assert.equal(todayBs(new Date('2026-10-10T18:20:00Z')).day, 25);
+});

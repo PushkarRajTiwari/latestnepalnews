@@ -1,5 +1,6 @@
 import { allCategories } from '../config/categories.js';
 import { site } from '../config/site.js';
+import { adMonthDays, adMonths, adToBs, bsMonthDays, bsMonths, bsRange, bsToAd, formatAd, formatBs, nepaliDigits, todayBs } from '../static/nepali-date.js';
 import { pages, strings } from './i18n.js';
 import { escapeHtml as e, imageUrl, safeUrl } from './util.js';
 
@@ -29,6 +30,14 @@ export function storyPath(item) {
 
 function formatDate(iso, lang) {
   return new Intl.DateTimeFormat(strings[lang].locale, { timeZone: 'Asia/Kathmandu', dateStyle: 'full' }).format(new Date(iso));
+}
+
+// Today's Bikram Sambat date for the header, e.g. "२५ असोज २०८३".
+function bsDate(iso, lang) {
+  const date = todayBs(new Date(iso));
+  if (!date) return '';
+  const text = `${date.day} ${bsMonths[lang][date.month - 1]} ${date.year}`;
+  return lang === 'np' ? nepaliDigits(text) : `${text} BS`;
 }
 
 // Everything a template needs: the language, the URL helpers and the source names.
@@ -106,6 +115,7 @@ function nav(ctx, active) {
     link('latest', ctx.t.latest),
     ...(ctx.hasBrief ? [link('brief', ctx.t.brief)] : []),
     ...allCategories.map((c) => link(c.slug, c.label[ctx.lang])),
+    link('date-converter', ctx.t.converter),
   ].join('');
 }
 
@@ -182,7 +192,7 @@ ${jsonLd}
 <a class="skip" href="#main">${e(t.skip)}</a>
 <header class="masthead">
   <div class="topbar wrap">
-    <span class="today">${e(formatDate(ctx.generatedAt, lang))}</span>
+    <span class="today">${bsDate(ctx.generatedAt, lang) ? `<a href="${ctx.href(pathFor(lang, 'date-converter'))}">${e(bsDate(ctx.generatedAt, lang))}</a> · ` : ''}${e(formatDate(ctx.generatedAt, lang))}</span>
     <div class="topbar-actions">
       <button class="theme-toggle" type="button" data-theme-toggle aria-label="${e(t.themeToggle)}" title="${e(t.themeToggle)}" hidden>${themeIcons()}</button>
       <a class="lang-switch" href="${ctx.href(pathFor(other, twin ? slug : ''))}" hreflang="${strings[other].htmlLang}" lang="${strings[other].htmlLang}">${e(t.switchTo)}</a>
@@ -203,6 +213,7 @@ ${body}
     <nav class="footer-links">
       <a href="${ctx.href(pathFor(lang, 'about'))}">${e(t.about)}</a>
       <a href="${ctx.href(pathFor(lang, 'sources'))}">${e(t.sources)}</a>
+      <a href="${ctx.href(pathFor(lang, 'date-converter'))}">${e(t.converter)}</a>
       <a href="${ctx.href(pathFor(lang, 'disclaimer'))}">${e(t.disclaimer)}</a>
       <a href="${ctx.href(pathFor(lang, 'privacy'))}">${e(t.privacy)}</a>
     </nav>
@@ -295,6 +306,68 @@ export function renderPage(ctx, key) {
   const body = `<div class="page-head"><h1>${e(ctx.t[key])}</h1></div>
 <div class="prose">${pages[key][ctx.lang]}${withContact}</div>`;
   return layout(ctx, { slug: key, title: ctx.t[key], body });
+}
+
+// BS <-> AD date converter. The build fills in today's date so the page works
+// without JavaScript; converter.js makes the pickers convert as you change them.
+function dateForm(ctx, kind, date) {
+  const { t, lang } = ctx;
+  const n = (value) => (lang === 'np' ? nepaliDigits(value) : String(value));
+  const bs = kind === 'bs';
+  const [firstYear, lastYear] = bs
+    ? [bsRange.first, bsRange.last]
+    : [bsToAd(bsRange.first, 1, 1).year, bsToAd(bsRange.last, 12, bsMonthDays(bsRange.last, 12)).year];
+  const monthNames = (bs ? bsMonths : adMonths)[lang];
+  const dayCount = bs ? bsMonthDays(date.year, date.month) : adMonthDays(date.year, date.month);
+  const options = (from, to, selected, label = n) =>
+    Array.from({ length: to - from + 1 }, (_, i) => from + i)
+      .map((v) => `<option value="${v}"${v === selected ? ' selected' : ''}>${e(label(v))}</option>`)
+      .join('');
+  const other = bs ? bsToAd(date.year, date.month, date.day) : adToBs(date.year, date.month, date.day);
+  const result = bs ? formatAd(other, lang) : formatBs(other, lang);
+  const id = (field) => `${kind}-${field}`;
+  return `<form class="converter-card" data-convert="${kind}" data-lang="${lang}" data-first="${firstYear}" data-last="${lastYear}" data-error="${e(t.noDate)}">
+  <h2>${e(bs ? t.bsToAd : t.adToBs)}</h2>
+  <div class="converter-fields">
+    <label for="${id('year')}">${e(t.year)}<select id="${id('year')}" name="year">${options(firstYear, lastYear, date.year)}</select></label>
+    <label for="${id('month')}">${e(t.month)}<select id="${id('month')}" name="month">${options(1, 12, date.month, (m) => monthNames[m - 1])}</select></label>
+    <label for="${id('day')}">${e(t.day)}<select id="${id('day')}" name="day">${options(1, dayCount, date.day)}</select></label>
+  </div>
+  <p class="converter-result" aria-live="polite" data-result>${e(result)}</p>
+  <button type="button" class="converter-today" data-today hidden>${e(t.today)}</button>
+</form>`;
+}
+
+export function renderConverter(ctx) {
+  const { t, lang } = ctx;
+  const bs = todayBs(new Date(ctx.generatedAt));
+  const ad = bsToAd(bs.year, bs.month, bs.day);
+  const n = (value) => (lang === 'np' ? nepaliDigits(value) : String(value));
+  const firstAd = bsToAd(bsRange.first, 1, 1);
+  const lastAd = bsToAd(bsRange.last, 12, bsMonthDays(bsRange.last, 12));
+  const body = `<div class="page-head"><h1>${e(t.converter)}</h1></div>
+<div class="prose"><p>${e(t.converterIntro)}</p></div>
+<div class="converter">
+${dateForm(ctx, 'bs', bs)}
+${dateForm(ctx, 'ad', ad)}
+</div>
+<p class="converter-note">${e(t.converterNote(n(bsRange.first), n(bsRange.last), n(firstAd.year), n(lastAd.year)))}</p>
+<script type="module" src="${ctx.href(`converter.js?v=${ctx.assetVersion || ''}`)}"></script>`;
+  return layout(ctx, {
+    slug: 'date-converter',
+    title: t.converter,
+    description: t.converterDescription,
+    body,
+    structured: {
+      '@type': 'WebApplication',
+      name: t.converter,
+      url: ctx.absolute(pathFor(lang, 'date-converter')),
+      applicationCategory: 'UtilitiesApplication',
+      operatingSystem: 'Any',
+      inLanguage: t.htmlLang,
+      offers: { '@type': 'Offer', price: '0' },
+    },
+  });
 }
 
 export function renderNotFound(ctx) {
