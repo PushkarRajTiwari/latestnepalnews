@@ -9,6 +9,7 @@
 //              the Vercel production domain, then config/site.js)
 //   BASE_PATH  path the site is served under, e.g. /latestnepalnews ("" at a domain root)
 //   ANTHROPIC_API_KEY  turns on Claude-written summaries (see config/site.js)
+//   GEMINI_API_KEY     writes them with Gemini when Claude can't
 
 import { createHash } from 'node:crypto';
 import { cp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
@@ -39,7 +40,7 @@ import {
   renderStory,
 } from './render.js';
 import { mergeItems, normalizeItems } from './store.js';
-import { planSummaries, writeSummaries } from './summarize.js';
+import { geminiWriter, planSummaries, writeSummaries } from './summarize.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = join(root, 'dist');
@@ -53,7 +54,7 @@ const basePath = (process.env.BASE_PATH || '').replace(/\/$/, '');
 // Vercel preview builds read the production archive but never write
 // summaries, so only production spends on the API.
 const vercelEnv = process.env.VERCEL_ENV;
-const canSummarize = Boolean(process.env.ANTHROPIC_API_KEY) && !offline && (!vercelEnv || vercelEnv === 'production');
+const canSummarize = Boolean(process.env.ANTHROPIC_API_KEY || process.env.GEMINI_API_KEY) && !offline && (!vercelEnv || vercelEnv === 'production');
 // Facebook posts go out from production builds only.
 const canPostToFacebook =
   Boolean(process.env.FACEBOOK_PAGE_ID && process.env.FACEBOOK_PAGE_TOKEN) && !offline && (!vercelEnv || vercelEnv === 'production');
@@ -163,17 +164,23 @@ async function main() {
     .flatMap((lang) => planSummaries(stories, summaries, { lang, now, hours: site.summaries.hours }))
     .sort((a, b) => b.members.length - a.members.length);
   if (canSummarize && jobs.length) {
-    console.log(`\nWriting up to ${site.summaries.maxPerBuild} of ${jobs.length} summaries with ${site.summaries.model}`);
+    const sourceName = (id) => feeds.find((f) => f.id === id)?.name || id;
+    const fallback = process.env.GEMINI_API_KEY
+      ? geminiWriter({ key: process.env.GEMINI_API_KEY, model: site.summaries.fallbackModel, sourceName })
+      : null;
+    const writers = [process.env.ANTHROPIC_API_KEY && site.summaries.model, fallback && `${fallback.model} as fallback`].filter(Boolean);
+    console.log(`\nWriting up to ${site.summaries.maxPerBuild} of ${jobs.length} summaries with ${writers.join(', ')}`);
     const written = await writeSummaries(jobs, summaries, {
-      client: new Anthropic(),
+      client: process.env.ANTHROPIC_API_KEY ? new Anthropic() : null,
       model: site.summaries.model,
       max: site.summaries.maxPerBuild,
-      sourceName: (id) => feeds.find((f) => f.id === id)?.name || id,
+      sourceName,
       now,
+      fallback,
     });
     console.log(`Wrote ${written} summaries`);
   } else if (jobs.length) {
-    console.log(`\n${jobs.length} stories are waiting for a summary (summaries are off: ANTHROPIC_API_KEY is not set, or this isn't a production build)`);
+    console.log(`\n${jobs.length} stories are waiting for a summary (summaries are off: neither ANTHROPIC_API_KEY nor GEMINI_API_KEY is set, or this isn't a production build)`);
   }
   summaries = pruneSummaries(summaries, stories);
 
@@ -185,7 +192,7 @@ async function main() {
   }
   const fbConfig = site.facebook;
   const live = new Set(archive.stories.map((story) => story.id));
-  const candidates = choosePosts(topStories(items, { lang: fbConfig.lang, now, limit: site.topStories }), {
+  const candidates = choosePosts(topStories(items, { lang: fbConfig.lang, now, limit: fbConfig.candidates }), {
     live,
     posted: facebook,
     now,

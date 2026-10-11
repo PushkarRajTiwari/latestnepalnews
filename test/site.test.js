@@ -11,7 +11,7 @@ import { pickStory } from '../src/pick.js';
 import { discoverFeedUrl, parseFeed } from '../src/parse.js';
 import { context, renderList, renderStory } from '../src/render.js';
 import { mergeItems, normalizeItems } from '../src/store.js';
-import { planSummaries, writeSummaries } from '../src/summarize.js';
+import { geminiWriter, planSummaries, writeSummaries } from '../src/summarize.js';
 import { normalizeUrl, toPlainText, truncate } from '../src/util.js';
 
 const now = new Date('2026-10-08T06:00:00Z');
@@ -208,6 +208,33 @@ test('writes summaries with Claude and records skips and failures', async () => 
   assert.equal(await writeSummaries(failJobs, failed, { client: boom, model: 'claude-haiku-5-5', max: 5, sourceName: (id) => id, now }), 0);
   assert.deepEqual(failed, {});
   assert.equal(boom.calls[0].fallbacks, undefined);
+});
+
+test('summaries fall back to Gemini when Claude fails', async () => {
+  const summaries = {};
+  const jobs = planSummaries(budgetStories(), summaries, { lang: 'en', now });
+  const broke = fakeClient(() => {
+    throw Object.assign(new Error('Your credit balance is too low'), { status: 400 });
+  });
+  const requests = [];
+  const fetchImpl = async (url, init) => {
+    requests.push({ url, init, body: JSON.parse(init.body) });
+    return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: 'Budget presented, according to the outlets.' }] } }] }) };
+  };
+  const fallback = geminiWriter({ key: 'g-key', model: 'gemini-2.5-flash', sourceName: (id) => id, fetchImpl });
+  const written = await writeSummaries(jobs, summaries, { client: broke, model: 'claude-sonnet-5-5', max: 5, sourceName: (id) => id, now, fallback });
+  assert.equal(written, 1);
+  assert.equal(summaries[jobs[0].id].text, 'Budget presented, according to the outlets.');
+  assert.equal(summaries[jobs[0].id].model, 'gemini-2.5-flash');
+  assert.match(requests[0].url, /gemini-2\.5-flash:generateContent/);
+  assert.equal(requests[0].init.headers['x-goog-api-key'], 'g-key');
+  assert.match(requests[0].body.systemInstruction.parts[0].text, /English/);
+  assert.match(requests[0].body.contents[0].parts[0].text, /<headline>Finance minister presents/);
+
+  // With no Claude key at all, Gemini writes them directly.
+  const onlyGemini = {};
+  const geminiJobs = planSummaries(budgetStories(), onlyGemini, { lang: 'en', now });
+  assert.equal(await writeSummaries(geminiJobs, onlyGemini, { client: null, model: 'claude-sonnet-5-5', max: 5, sourceName: (id) => id, now, fallback }), 1);
 });
 
 test('story pages keep readers on the site and link out once', () => {

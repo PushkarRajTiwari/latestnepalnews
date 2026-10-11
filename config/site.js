@@ -20,9 +20,12 @@ export const site = {
 
   // Short summaries written by Claude for stories that several outlets cover.
   // They're only written when the ANTHROPIC_API_KEY environment variable is
-  // set (in Vercel: Project → Settings → Environment Variables).
+  // set (in Vercel: Project → Settings → Environment Variables). With
+  // GEMINI_API_KEY set too, Gemini writes them whenever Claude fails (or
+  // alone, if only that key is set).
   summaries: {
     model: 'claude-sonnet-5-5',
+    fallbackModel: 'gemini-2.5-flash',
     // At most this many new summaries per build, to cap the cost.
     maxPerBuild: 12,
     // Only stories first seen in the last this-many hours get a summary.
@@ -45,6 +48,9 @@ export const site = {
     minSources: 1,
     // Only stories published in the last this-many hours.
     hours: 6,
+    // Look for something to post among this many top stories (most outlets
+    // first), so there's still a fresh one when the top few were posted.
+    candidates: 30,
     graphVersion: 'v23.0',
     // An AI picks the most important of the top this-many candidates, so an
     // urgent story one outlet broke can beat one many outlets repeat. Tried

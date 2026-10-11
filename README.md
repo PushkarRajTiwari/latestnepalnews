@@ -56,7 +56,7 @@ Note that Vercel's free Hobby plan is for non-commercial use. If you add ads lat
 
 ## Turning on summaries
 
-Summaries need an Anthropic API key. Without one, the site still builds; stories just have no summary.
+Summaries need an Anthropic API key or a Gemini API key (`GEMINI_API_KEY`, free tier at [aistudio.google.com](https://aistudio.google.com)). Claude writes them first; if it fails (for example, no API credit), Gemini writes the rest. Without either key, the site still builds; stories just have no summary.
 
 1. Create a key at [console.anthropic.com](https://console.anthropic.com) (**Settings → API keys**). It's worth setting a monthly spend limit under **Settings → Limits** too.
 2. In Vercel, go to **Project → Settings → Environment Variables**, add `ANTHROPIC_API_KEY` with the key as its value, and tick only **Production**.
@@ -84,7 +84,7 @@ To get them:
 5. Add both to Vercel and redeploy.
 6. In the app's settings, fill in the privacy policy URL (`https://www.latestnepalnews.com/privacy/`) and switch the app to **Live**. While an app is in development mode, its posts are only visible to the app's admins.
 
-**Which story goes first:** if an AI key is set in Vercel, an AI picks the most important or urgent of the top 10 candidates, so breaking news one outlet has can beat a story many outlets repeat. It tries Claude (`ANTHROPIC_API_KEY`), then ChatGPT (`OPENAI_API_KEY`), then Gemini (`GEMINI_API_KEY`), using only the ones whose key is set; models are under `facebook.aiModels` in `config/site.js`. With no key, or if all fail, the most-reported story goes first. Note that `ANTHROPIC_API_KEY` also turns on summaries (see above).
+**Which story goes first:** if an AI key is set in Vercel, an AI picks the most important or urgent of the top 10 candidates (taken from the top 30 stories, after skipping topics already posted), so breaking news one outlet has can beat a story many outlets repeat. It tries Claude (`ANTHROPIC_API_KEY`), then ChatGPT (`OPENAI_API_KEY`), then Gemini (`GEMINI_API_KEY`), using only the ones whose key is set; models are under `facebook.aiModels` in `config/site.js`. With no key, or if all fail, the most-reported story goes first. Note that `ANTHROPIC_API_KEY` also turns on summaries (see above).
 
 The build log says which story was picked and by whom, and how many were posted. If posting fails, the site still updates.
 
