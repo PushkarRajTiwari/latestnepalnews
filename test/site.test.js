@@ -7,6 +7,7 @@ import { categorize } from '../src/categorize.js';
 import { stem, topStories } from '../src/cluster.js';
 import { choosePosts, postMessage, postToFacebook, prunePosted } from '../src/facebook.js';
 import { fillImages, pageImage } from '../src/images.js';
+import { pickStory } from '../src/pick.js';
 import { discoverFeedUrl, parseFeed } from '../src/parse.js';
 import { context, renderList, renderStory } from '../src/render.js';
 import { mergeItems, normalizeItems } from '../src/store.js';
@@ -355,4 +356,39 @@ test('Facebook: still posts when the token cannot read the page', async () => {
   });
   assert.deepEqual(result, { posted: 1, skipped: 0, canRead: false });
   assert.equal(posted.a.postId, 'p1');
+});
+
+test('Facebook pick: tries Claude, then ChatGPT, then Gemini, then the ranking', async () => {
+  const stories = [story('a', 'kp', 'Many outlets', 30, { outlets: 4 }), story('b', 'kp', 'Earthquake hits', 5, { outlets: 1 })];
+  const calls = [];
+  const reply = { anthropic: null, openai: null, google: null };
+  const fetchImpl = async (url, init) => {
+    const host = new URL(url).hostname;
+    const who = host.includes('anthropic') ? 'anthropic' : host.includes('openai') ? 'openai' : 'google';
+    calls.push(who);
+    const r = reply[who];
+    if (r === null) return new Response(JSON.stringify({ error: { message: 'down' } }), { status: 500 });
+    if (who === 'anthropic') return new Response(JSON.stringify({ content: [{ type: 'text', text: r }] }));
+    if (who === 'openai') return new Response(JSON.stringify({ choices: [{ message: { content: r } }] }));
+    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: r }] } }] }));
+  };
+  const opts = (env) => ({ env, models: { Claude: 'c', ChatGPT: 'o', Gemini: 'g' }, sourceName: (id) => id, now, fetchImpl });
+  const all = { ANTHROPIC_API_KEY: 'a', OPENAI_API_KEY: 'o', GEMINI_API_KEY: 'g' };
+
+  reply.anthropic = '2';
+  assert.deepEqual(await pickStory(stories, opts(all)).then((r) => [r.story.id, r.by]), ['b', 'Claude']);
+
+  reply.anthropic = null;
+  reply.openai = 'Number 2.';
+  calls.length = 0;
+  assert.deepEqual(await pickStory(stories, opts(all)).then((r) => [r.story.id, r.by]), ['b', 'ChatGPT']);
+  assert.deepEqual(calls, ['anthropic', 'openai']);
+
+  reply.openai = 'nonsense';
+  reply.google = '2';
+  assert.deepEqual(await pickStory(stories, opts(all)).then((r) => [r.story.id, r.by]), ['b', 'Gemini']);
+
+  calls.length = 0;
+  assert.deepEqual(await pickStory(stories, opts({})).then((r) => [r.story.id, r.by]), ['a', 'ranking']);
+  assert.deepEqual(calls, []);
 });

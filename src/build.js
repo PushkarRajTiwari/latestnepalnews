@@ -24,6 +24,7 @@ import { mergeArchive, nepalDate, pruneSummaries } from './archive.js';
 import { topStories } from './cluster.js';
 import { choosePosts, postMessage, postToFacebook, prunePosted } from './facebook.js';
 import { fetchAll } from './fetch.js';
+import { pickStory } from './pick.js';
 import { fillImages } from './images.js';
 import { parseFeed } from './parse.js';
 import {
@@ -180,17 +181,29 @@ async function main() {
   const facebook = prunePosted(archive.facebook, stories);
   const fbConfig = site.facebook;
   const live = new Set(archive.stories.map((story) => story.id));
-  const toPost = choosePosts(topStories(items, { lang: fbConfig.lang, now, limit: site.topStories }), {
+  const candidates = choosePosts(topStories(items, { lang: fbConfig.lang, now, limit: site.topStories }), {
     live,
     posted: facebook,
     now,
     minSources: fbConfig.minSources,
     hours: fbConfig.hours,
-    max: fbConfig.maxPerBuild,
+    max: Math.max(fbConfig.aiPool, fbConfig.maxPerBuild),
   });
+  let toPost = candidates.slice(0, fbConfig.maxPerBuild);
   if (canPostToFacebook) {
     const sourceName = (id) => feeds.find((f) => f.id === id)?.name || id;
     try {
+      // The AI's pick goes first; the rest follow the ranking.
+      const { story: pick, by } = await pickStory(candidates.slice(0, fbConfig.aiPool), {
+        models: fbConfig.aiModels,
+        sourceName,
+        now,
+        log: (line) => console.log(`Facebook pick: ${line}`),
+      });
+      if (pick) {
+        toPost = [pick, ...candidates.filter((story) => story.id !== pick.id)].slice(0, fbConfig.maxPerBuild);
+        console.log(`Facebook pick (${by}): ${pick.title}`);
+      }
       const done = await postToFacebook(toPost, {
         pageId: process.env.FACEBOOK_PAGE_ID,
         token: process.env.FACEBOOK_PAGE_TOKEN,

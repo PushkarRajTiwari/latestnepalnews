@@ -84,7 +84,9 @@ To get them:
 5. Add both to Vercel and redeploy.
 6. In the app's settings, fill in the privacy policy URL (`https://www.latestnepalnews.com/privacy/`) and switch the app to **Live**. While an app is in development mode, its posts are only visible to the app's admins.
 
-The build log says how many stories were posted. If posting fails, the site still updates.
+**Which story goes first:** if an AI key is set in Vercel, an AI picks the most important or urgent of the top 10 candidates, so breaking news one outlet has can beat a story many outlets repeat. It tries Claude (`ANTHROPIC_API_KEY`), then ChatGPT (`OPENAI_API_KEY`), then Gemini (`GEMINI_API_KEY`), using only the ones whose key is set; models are under `facebook.aiModels` in `config/site.js`. With no key, or if all fail, the most-reported story goes first. Note that `ANTHROPIC_API_KEY` also turns on summaries (see above).
+
+The build log says which story was picked and by whom, and how many were posted. If posting fails, the site still updates.
 
 ## Common changes
 

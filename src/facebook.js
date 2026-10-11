@@ -24,7 +24,7 @@ export function choosePosts(clusters, { live, posted, now, minSources, hours, ma
   const cutoff = now.getTime() - hours * 3600 * 1000;
   return clusters
     .filter((c) => c.related.length + 1 >= minSources)
-    .map((c) => c.lead)
+    .map((c) => ({ ...c.lead, outlets: c.related.length + 1 }))
     .filter((story) => live.has(story.id) && !posted[story.id] && Date.parse(story.published) >= cutoff)
     .slice(0, max);
 }

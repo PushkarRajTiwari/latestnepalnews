@@ -46,5 +46,15 @@ export const site = {
     // Only stories published in the last this-many hours.
     hours: 6,
     graphVersion: 'v23.0',
+    // An AI picks the most important of the top this-many candidates, so an
+    // urgent story one outlet broke can beat one many outlets repeat. Tried
+    // in order, each only if its key is set in Vercel: ANTHROPIC_API_KEY,
+    // OPENAI_API_KEY, GEMINI_API_KEY. With none, the ranking decides.
+    aiPool: 10,
+    aiModels: {
+      Claude: 'claude-haiku-5-5',
+      ChatGPT: 'gpt-4.1-mini',
+      Gemini: 'gemini-2.5-flash',
+    },
   },
 };
