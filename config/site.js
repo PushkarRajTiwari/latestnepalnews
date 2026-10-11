@@ -22,7 +22,7 @@ export const site = {
   // They're only written when the ANTHROPIC_API_KEY environment variable is
   // set (in Vercel: Project → Settings → Environment Variables).
   summaries: {
-    model: 'claude-opus-5-5',
+    model: 'claude-sonnet-5-5',
     // At most this many new summaries per build, to cap the cost.
     maxPerBuild: 12,
     // Only stories first seen in the last this-many hours get a summary.
@@ -52,7 +52,7 @@ export const site = {
     // OPENAI_API_KEY, GEMINI_API_KEY. With none, the ranking decides.
     aiPool: 10,
     aiModels: {
-      Claude: 'claude-haiku-5-5',
+      Claude: 'claude-sonnet-5-5',
       ChatGPT: 'gpt-4.1-mini',
       Gemini: 'gemini-2.5-flash',
     },
