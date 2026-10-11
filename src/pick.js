@@ -6,7 +6,7 @@
 
 const TIMEOUT_MS = 20_000;
 
-function prompt(stories, { sourceName, now }) {
+function prompt(stories, { sourceName, now, recent = [] }) {
   const lines = stories.map((story, i) => {
     const minutes = Math.max(0, Math.round((now.getTime() - Date.parse(story.published)) / 60_000));
     const outlets = story.outlets > 1 ? `${story.outlets} outlets` : '1 outlet';
@@ -15,7 +15,7 @@ function prompt(stories, { sourceName, now }) {
   return `You run the Facebook page of a Nepali news site. Below are the latest headlines. Pick the ONE story that is most important or urgent for readers in Nepal right now: breaking news, disasters, deaths of public figures, major government or economic decisions, or things that affect many people's daily lives. A story only one outlet has reported can still be the most important. Prefer serious news over gossip.
 
 ${lines.join('\n')}
-
+${recent.length ? `\nThe page already posted these recently, so avoid another story on the same topic:\n${recent.map((t) => `- ${t}`).join('\n')}\n` : ''}
 Reply with only the number of your choice.`;
 }
 
@@ -82,10 +82,10 @@ export const services = [
 
 // Returns { story, by } where `by` names the service that chose, or
 // 'ranking' when no service could. `stories` are already in ranking order.
-export async function pickStory(stories, { env = process.env, models, sourceName, now = new Date(), fetchImpl = fetch, log = () => {} }) {
+export async function pickStory(stories, { env = process.env, models, sourceName, now = new Date(), recent = [], fetchImpl = fetch, log = () => {} }) {
   if (!stories.length) return { story: null, by: 'ranking' };
   if (stories.length === 1) return { story: stories[0], by: 'ranking' };
-  const text = prompt(stories, { sourceName, now });
+  const text = prompt(stories, { sourceName, now, recent });
   for (const service of services) {
     const key = env[service.key];
     if (!key) continue;

@@ -392,3 +392,20 @@ test('Facebook pick: tries Claude, then ChatGPT, then Gemini, then the ranking',
   assert.deepEqual(await pickStory(stories, opts({})).then((r) => [r.story.id, r.by]), ['a', 'ranking']);
   assert.deepEqual(calls, []);
 });
+
+test('Facebook: skips other outlets\' versions and same-topic stories already posted', () => {
+  const s = (id, title, extra = {}) => story(id, id, title, 30, extra);
+  const clusters = [
+    { lead: s('a', 'Koshi flood sweeps away bridge in Sunsari'), related: [s('a2', 'Bridge swept away by Koshi flood in Sunsari')] },
+    { lead: s('b', 'Koshi flood: hundreds displaced in Sunsari district'), related: [] },
+    { lead: s('c', 'Cabinet approves new budget for health'), related: [] },
+    { lead: s('d', 'Health budget approved by cabinet meeting'), related: [] },
+  ];
+  const live = new Set(['a', 'b', 'c', 'd']);
+  // a2 (another outlet's version of a) was posted earlier.
+  const posted = { a2: { at: now.toISOString(), title: 'Bridge swept away by Koshi flood in Sunsari' } };
+  const picked = choosePosts(clusters, { live, posted, now, minSources: 1, hours: 6, max: 3 });
+  // a: same cluster as a posted story; b: same flood topic; d: same topic as c, which is picked first.
+  assert.deepEqual(picked.map((x) => x.id), ['c']);
+  assert.deepEqual(picked[0].memberIds, ['c']);
+});

@@ -40,6 +40,14 @@ function similarity(a, b) {
   return { shared, overlap: smaller ? shared / smaller : 0 };
 }
 
+// Looser than the grouping below: true when two headlines share at least two
+// meaningful words, enough to call them the same topic (e.g. two reports on
+// the same flood). Used so the Facebook page doesn't repeat a topic.
+export function sameTopic(titleA, titleB) {
+  const { shared, overlap } = similarity(signature(titleA), signature(titleB));
+  return shared >= 2 && overlap >= 0.3;
+}
+
 // Group recent items in one language that report the same story, so the
 // homepage can show one headline with "also covered by" links. Returns
 // clusters sorted by how many outlets covered the story, then by recency.

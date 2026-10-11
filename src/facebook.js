@@ -10,6 +10,8 @@
 // only stories whose page is already live (they were in the previous build's
 // archive) are posted.
 
+import { sameTopic } from './cluster.js';
+
 const GRAPH = 'https://graph.facebook.com';
 
 // The text of a post: the headline as the outlet wrote it, credited.
@@ -19,14 +21,28 @@ export function postMessage(story, { sourceName, lang }) {
 }
 
 // Pick which top stories to post: covered by enough outlets, recent, already
-// live on the site and never posted before.
-export function choosePosts(clusters, { live, posted, now, minSources, hours, max }) {
+// live on the site, and not the same story or topic as anything the page
+// posted in the last `topicHours` (another outlet's version of a story that
+// was already posted counts as the same).
+export function choosePosts(clusters, { live, posted, now, minSources, hours, max, topicHours = 12 }) {
   const cutoff = now.getTime() - hours * 3600 * 1000;
-  return clusters
-    .filter((c) => c.related.length + 1 >= minSources)
-    .map((c) => ({ ...c.lead, outlets: c.related.length + 1 }))
-    .filter((story) => live.has(story.id) && !posted[story.id] && Date.parse(story.published) >= cutoff)
-    .slice(0, max);
+  const topicCutoff = now.getTime() - topicHours * 3600 * 1000;
+  const recentTitles = Object.values(posted)
+    .filter((entry) => entry.title && Date.parse(entry.at) >= topicCutoff)
+    .map((entry) => entry.title);
+  const chosen = [];
+  for (const c of clusters) {
+    const members = [c.lead, ...c.related];
+    const story = { ...c.lead, outlets: members.length, memberIds: members.map((m) => m.id) };
+    if (members.length < minSources) continue;
+    if (!live.has(story.id) || Date.parse(story.published) < cutoff) continue;
+    if (members.some((m) => posted[m.id])) continue;
+    if (members.some((m) => recentTitles.some((title) => sameTopic(m.title, title)))) continue;
+    if (chosen.some((other) => sameTopic(other.title, story.title))) continue;
+    chosen.push(story);
+    if (chosen.length >= max) break;
+  }
+  return chosen;
 }
 
 async function graph(path, { token, version, method = 'GET', body, fetchImpl = fetch }) {
@@ -63,7 +79,7 @@ export async function postToFacebook(stories, { pageId, token, version, posted, 
   let skipped = 0;
   for (const story of stories) {
     if (seen.includes(`/news/${story.id}/`)) {
-      posted[story.id] = { postId: null, at: now.toISOString() };
+      for (const id of story.memberIds || [story.id]) posted[id] = { postId: null, at: now.toISOString(), title: story.title };
       skipped++;
       continue;
     }
@@ -74,7 +90,8 @@ export async function postToFacebook(stories, { pageId, token, version, posted, 
       body: { message: message(story), link: urlFor(story) },
       fetchImpl,
     });
-    posted[story.id] = { postId: result.id || null, at: now.toISOString() };
+    // Remember every outlet's version, so none of them is posted later.
+    for (const id of story.memberIds || [story.id]) posted[id] = { postId: result.id || null, at: now.toISOString(), title: story.title };
     count++;
   }
   return { posted: count, skipped, canRead };

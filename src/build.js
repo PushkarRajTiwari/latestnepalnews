@@ -179,6 +179,10 @@ async function main() {
 
   // Share the top stories on the Facebook page. A failure here never stops the site from updating.
   const facebook = prunePosted(archive.facebook, stories);
+  // Older records have no headline; fill it in so the same-topic check covers them.
+  for (const [id, entry] of Object.entries(facebook)) {
+    if (!entry.title) entry.title = stories.find((story) => story.id === id)?.title;
+  }
   const fbConfig = site.facebook;
   const live = new Set(archive.stories.map((story) => story.id));
   const candidates = choosePosts(topStories(items, { lang: fbConfig.lang, now, limit: site.topStories }), {
@@ -197,6 +201,7 @@ async function main() {
       const { story: pick, by } = await pickStory(candidates.slice(0, fbConfig.aiPool), {
         models: fbConfig.aiModels,
         sourceName,
+        recent: [...new Set(Object.values(facebook).map((entry) => entry.title).filter(Boolean))].slice(-10),
         now,
         log: (line) => console.log(`Facebook pick: ${line}`),
       });
