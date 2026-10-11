@@ -37,8 +37,9 @@ export const site = {
   facebook: {
     // Which language's top stories to post: 'np' or 'en'.
     lang: 'np',
-    // At most this many posts per build.
-    maxPerBuild: 3,
+    // At most this many posts per build. One per 30-minute refresh keeps
+    // the page's feed steady.
+    maxPerBuild: 1,
     // Only stories at least this many outlets report (1 = any story).
     // Stories more outlets report still go first.
     minSources: 1,
